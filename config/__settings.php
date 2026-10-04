@@ -72,7 +72,7 @@ return [
                 'key' => 'name',
                 'data_type' => 1,    // string,
                 'placeholder' => 'Your Website Name',
-                'default' => 'Your Company Name',
+                'default' => 'Adscale Zen',
                 /* 'validation_rules'   => [
                     'min:0'
                 ] */
@@ -87,7 +87,7 @@ return [
                 'key' => 'contact_email',
                 'data_type' => 1,    // string
                 'placeholder' => 'your-email-address@example.com',
-                'default' => 'your-contact-email@domain.com',
+                'default' => 'support@adscalezen.online',
             ],
             'contact_details' => [
                 'key' => 'contact_details',
@@ -994,13 +994,13 @@ return [
                 'key' => 'mail_from_address',
                 'data_type' => 1,    // string
                 'placeholder' => '',
-                'default' => '',
+                'default' => 'support@adscalezen.online',
             ],
             'mail_from_name' => [
                 'key' => 'mail_from_name',
                 'data_type' => 1,    // string
                 'placeholder' => '',
-                'default' => '',
+                'default' => 'Adscale Zen',
             ],
             'smtp_mail_port' => [
                 'key' => 'smtp_mail_port',

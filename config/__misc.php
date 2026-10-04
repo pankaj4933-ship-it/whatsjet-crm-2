@@ -6,8 +6,8 @@ return [
     /* Email Config
     ------------------------------------------------------------------------- */
     'mail_from' => [
-        env('MAIL_FROM_ADD', 'your@domain.com'),
-        env('MAIL_FROM_NAME', 'E-Mail Service'),
+        env('MAIL_FROM_ADD', 'support@adscalezen.online'),
+        env('MAIL_FROM_NAME', env('APP_NAME', 'Adscale Zen')),
     ],
     // development mode
     'ngrok_url' => env('NGROK_URL', ''),
