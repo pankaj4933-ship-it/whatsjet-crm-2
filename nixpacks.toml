@@ -1,0 +1,21 @@
+[phases.setup]
+nixPkgs = [
+  'php82',
+  'php82Packages.composer',
+  'php82Extensions.bcmath',
+  'php82Extensions.gd',
+  'php82Extensions.intl',
+  'php82Extensions.pdo_mysql',
+  'php82Extensions.zip',
+  'php82Extensions.mbstring',
+  'php82Extensions.gettext',
+  'php82Extensions.exif'
+]
+
+[phases.install]
+cmds = [
+  'composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-interaction'
+]
+
+[start]
+cmd = 'php artisan serve --host=0.0.0.0 --port=$PORT'

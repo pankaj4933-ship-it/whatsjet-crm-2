@@ -96,6 +96,15 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform-check": false,
+        "platform": {
+            "php": "8.2.0",
+            "ext-bcmath": "1",
+            "ext-zip": "1",
+            "ext-gd": "1",
+            "ext-intl": "1",
+            "ext-pdo_mysql": "1"
         }
     },
     "minimum-stability": "stable",
