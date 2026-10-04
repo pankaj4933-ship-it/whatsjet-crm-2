@@ -49,6 +49,23 @@
                 </div>
             </template>
             <section x-show="!isSetupInProcess">
+                @if (!getAppSettings('enable_embedded_signup') and !$embeddedSignupDoneAt and !getVendorSettings('facebook_app_id'))
+                <fieldset x-show="!isSetupInProcess" class="mb-4">
+                    <legend>{{ __tr('WhatsApp Setup with Facebook') }}</legend>
+                    <div class="text-center py-3">
+                        @if (!isWhatsAppBusinessAccountReady())
+                        <button type="button"
+                            style="background-color: #1877f2; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif;"
+                            class="btn btn-lg mb-2" onclick="launchWhatsAppSignup()">
+                            <i class="fab fa-facebook"></i><span class="h2 text-white">
+                                {{ __tr('Connect WhatsApp with Facebook') }}
+                                <i class="fa fa-sign-in-alt"></i></span>
+                        </button>
+                        @endif
+                    </div>
+                </fieldset>
+                <h3 class="text-center mt-2 mb-4">{{ __tr('OR') }}</h3>
+                @endif
                 @if ($isOnboardedViaEmbeddedSignup)
                 <fieldset class="my-4 py-4">
                     @if ($isWhatsAppBusinessMobileAppOnboarded)
@@ -649,13 +666,13 @@
    });
 })();
 </script>
-@if(getAppSettings('enable_embedded_signup'))
+{{-- Embedded Signup JS always loaded --}}
 <script>
     (function() {
        'use strict';
   window.fbAsyncInit = function() {
     FB.init({
-      appId            : '{{ getAppSettings('embedded_signup_app_id') }}',
+      appId            : '{{ getAppSettings('embedded_signup_app_id') ?: getVendorSettings('facebook_app_id') ?: getAppSettings('embedded_signup_app_id') }}',
       autoLogAppEvents : true,
       xfbml:    true, // parse social plugins on this page
       version          : 'v25.0'
@@ -752,4 +769,4 @@ window.addEventListener('message', sessionInfoListener);
   };
   })();
 </script>
-@endif
+{{-- end embedded signup JS --}}

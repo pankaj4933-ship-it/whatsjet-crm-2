@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        if(config('__misc.force_https', false)) {
+        if(config('__misc.force_https', false) || str_contains(request()->getHost(), 'ngrok') || str_starts_with(config('app.url'), 'https://')) {
             \URL::forceScheme('https');
         }
         require app_path('Yantrana/__Laraware/Support/helpers.php');
