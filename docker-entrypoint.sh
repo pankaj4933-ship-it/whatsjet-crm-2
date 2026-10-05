@@ -20,10 +20,14 @@ try {
     $pass = env("DB_PASSWORD");
     $port = env("DB_PORT", 3306);
     if ($host && $db && $user) {
-        $pdo = new PDO("mysql:host={$host};port={$port};dbname={$db}", $user, $pass, [
+        $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_TIMEOUT => 5
-        ]);
+            PDO::ATTR_TIMEOUT => 15
+        ];
+        if (file_exists('/etc/ssl/certs/ca-certificates.crt')) {
+            $options[PDO::MYSQL_ATTR_SSL_CA] = '/etc/ssl/certs/ca-certificates.crt';
+        }
+        $pdo = new PDO("mysql:host={$host};port={$port};dbname={$db}", $user, $pass, $options);
         $stmt = $pdo->query("SHOW TABLES");
         $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
         if (empty($tables)) {

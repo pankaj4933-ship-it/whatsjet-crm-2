@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     gettext \
     default-mysql-client \
+    ca-certificates \
     && docker-php-ext-configure intl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl gettext \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
