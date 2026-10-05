@@ -92,6 +92,10 @@ Route::group([
             AuthController::class,
             'handleGoogleCallback'
         ])->name('login.google.callback');
+        Route::get('/login/google/callback', [
+            AuthController::class,
+            'handleGoogleCallback'
+        ]);
 
 
         // Facebook  login
