@@ -101,6 +101,11 @@
         "audit": {
             "block": false
         },
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        },
         "platform": {
             "php": "8.2.0",
             "ext-bcmath": "1",

@@ -27,7 +27,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # Install PHP dependencies without platform requirement issues
-RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-interaction --no-audit
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-interaction --no-security-blocking
 
 # Set permissions for storage and bootstrap/cache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
