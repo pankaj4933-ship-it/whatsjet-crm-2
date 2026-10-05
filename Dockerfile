@@ -1,21 +1,17 @@
 FROM php:8.2-apache
 
-# Install system dependencies and PHP extensions required by Laravel & WhatsJet
+# Install official PHP extension installer (handles all dependencies and compilation)
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+
+# Install system utilities and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \
     curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
     zip \
     unzip \
-    libzip-dev \
-    libicu-dev \
-    gettext \
     default-mysql-client \
     ca-certificates \
-    && docker-php-ext-configure intl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl gettext \
+    && install-php-extensions pdo_mysql mbstring exif pcntl bcmath gd zip intl gettext \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite for Laravel routes
