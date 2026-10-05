@@ -138,6 +138,8 @@ Route::get('/fix-db', function () {
         'message' => 'Database tables schema & AUTO_INCREMENT verified and repaired successfully.',
         'details' => $results
     ]);
+});
+
 // user console
 Route::get('/console', function () {
     return hasCentralAccess() ? Redirect::route('central.console') : Redirect::route('vendor.console');
