@@ -29,9 +29,10 @@ COPY . .
 # Install PHP dependencies without platform requirement issues and without build-time scripts
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-interaction --no-security-blocking --no-scripts
 
-# Set permissions for storage and bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Set permissions for storage, public/media-storage and bootstrap/cache
+RUN mkdir -p /var/www/html/public/media-storage /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chown -R www-data:www-data /var/www/html/public/media-storage /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 777 /var/www/html/public/media-storage /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Configure Apache DocumentRoot to public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
