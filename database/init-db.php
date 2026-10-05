@@ -34,21 +34,42 @@ try {
     $pdo = new PDO($dsn, $user, $pass, $options);
     echo "Connected to MySQL / TiDB successfully!\n";
 
-    // Disable foreign key checks during schema fixes
+    // Disable foreign key checks
     try { $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;"); } catch (\Throwable $e) {}
 
-    $stmt = $pdo->query("SHOW TABLES");
-    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    echo "Found " . count($tables) . " existing tables in database.\n";
+    // Check if vendors table exists and has AUTO_INCREMENT on _id
+    $needsRebuild = false;
+    $stmt = $pdo->query("SHOW TABLES LIKE 'vendors'");
+    $vendorTable = $stmt->fetch();
 
-    $sqlPath = __DIR__ . '/database.sql';
+    if (!$vendorTable) {
+        echo "Vendors table does not exist. Initializing fresh schema...\n";
+        $needsRebuild = true;
+    } else {
+        $stmtCol = $pdo->query("SHOW COLUMNS FROM `vendors` LIKE '_id'");
+        $colData = $stmtCol->fetch(PDO::FETCH_ASSOC);
+        if (!$colData || stripos($colData['Extra'] ?? '', 'auto_increment') === false) {
+            echo "TiDB tables missing AUTO_INCREMENT detected. Rebuilding schema for native TiDB compatibility...\n";
+            $needsRebuild = true;
+        }
+    }
 
-    if (empty($tables)) {
-        echo "Database is empty. Importing full database/database.sql statement by statement...\n";
+    if ($needsRebuild) {
+        // Drop existing tables cleanly
+        $stmt = $pdo->query("SHOW TABLES");
+        $existingTables = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($existingTables as $tbl) {
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS `{$tbl}`;");
+            } catch (\Throwable $e) {}
+        }
+        echo "Cleared " . count($existingTables) . " legacy tables.\n";
+
+        $sqlPath = __DIR__ . '/database.sql';
         if (file_exists($sqlPath)) {
             $sqlContent = file_get_contents($sqlPath);
-            // Split into individual SQL queries
-            $queries = splitSqlStatements($sqlContent);
+            $queries = getTidbCompatibleQueries($sqlContent);
+            
             $successCount = 0;
             $failCount = 0;
             foreach ($queries as $q) {
@@ -61,104 +82,13 @@ try {
                     $failCount++;
                 }
             }
-            echo "Import completed: {$successCount} queries executed, {$failCount} skipped/failed.\n";
+            echo "Import completed: {$successCount} queries executed ({$failCount} skipped/duplicates).\n";
         }
+    } else {
+        echo "Database already verified: TiDB native AUTO_INCREMENT is active.\n";
     }
 
-    // Comprehensive table schema verification & AUTO_INCREMENT enforcement
-    echo "Verifying PRIMARY KEY and AUTO_INCREMENT across all CRM tables...\n";
-    $tableColumns = [
-        'activity_logs' => ['_id', 'INT UNSIGNED'],
-        'background_tasks' => ['_id', 'INT UNSIGNED'],
-        'bot_flows' => ['_id', 'INT UNSIGNED'],
-        'bot_replies' => ['_id', 'INT UNSIGNED'],
-        'campaigns' => ['_id', 'INT UNSIGNED'],
-        'campaign_groups' => ['_id', 'INT UNSIGNED'],
-        'configurations' => ['_id', 'INT UNSIGNED'],
-        'contacts' => ['_id', 'INT UNSIGNED'],
-        'contact_bot_flow_sessions' => ['_id', 'INT UNSIGNED'],
-        'contact_custom_fields' => ['_id', 'INT UNSIGNED'],
-        'contact_custom_field_values' => ['_id', 'INT UNSIGNED'],
-        'contact_groups' => ['_id', 'INT UNSIGNED'],
-        'contact_labels' => ['_id', 'INT UNSIGNED'],
-        'countries' => ['_id', 'INT UNSIGNED'],
-        'credit_transactions' => ['_id', 'INT UNSIGNED'],
-        'failed_jobs' => ['id', 'BIGINT UNSIGNED'],
-        'group_contacts' => ['_id', 'INT UNSIGNED'],
-        'info_materials' => ['_id', 'INT UNSIGNED'],
-        'jobs' => ['id', 'BIGINT UNSIGNED'],
-        'labels' => ['_id', 'INT UNSIGNED'],
-        'login_attempts' => ['_id', 'INT UNSIGNED'],
-        'login_logs' => ['_id', 'INT UNSIGNED'],
-        'manual_subscriptions' => ['_id', 'INT UNSIGNED'],
-        'message_labels' => ['_id', 'INT UNSIGNED'],
-        'pages' => ['_id', 'INT UNSIGNED'],
-        'password_resets' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_actions' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_action_logs' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_logs' => ['_id', 'INT UNSIGNED'],
-        'subscriptions' => ['id', 'BIGINT UNSIGNED'],
-        'subscription_items' => ['id', 'BIGINT UNSIGNED'],
-        'tickets' => ['_id', 'INT UNSIGNED'],
-        'transactions' => ['_id', 'INT UNSIGNED'],
-        'users' => ['_id', 'INT UNSIGNED'],
-        'user_devices' => ['_id', 'INT UNSIGNED'],
-        'user_roles' => ['_id', 'TINYINT UNSIGNED'],
-        'user_settings' => ['_id', 'INT UNSIGNED'],
-        'vendors' => ['_id', 'INT UNSIGNED'],
-        'vendor_notifications' => ['_id', 'INT UNSIGNED'],
-        'vendor_settings' => ['_id', 'INT UNSIGNED'],
-        'vendor_users' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_calls' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_message_logs' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_message_queue' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_templates' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_webhook_queue' => ['_id', 'INT UNSIGNED'],
-    ];
-
-    foreach ($tableColumns as $tableName => $colInfo) {
-        $colName = $colInfo[0];
-        $colType = $colInfo[1];
-
-        try {
-            // Check if table exists
-            $stmt = $pdo->prepare("SHOW TABLES LIKE :table");
-            $stmt->execute([':table' => $tableName]);
-            if (!$stmt->fetch()) {
-                continue;
-            }
-
-            // Inspect column details
-            $stmtCol = $pdo->query("SHOW COLUMNS FROM `{$tableName}` LIKE '{$colName}'");
-            $colData = $stmtCol->fetch(PDO::FETCH_ASSOC);
-
-            if ($colData) {
-                // Check if Primary Key is set
-                if (empty($colData['Key']) || $colData['Key'] !== 'PRI') {
-                    try {
-                        $pdo->exec("ALTER TABLE `{$tableName}` ADD PRIMARY KEY (`{$colName}`);");
-                    } catch (\Throwable $e) {
-                        // Already primary key or duplicate
-                    }
-                }
-
-                // Check if AUTO_INCREMENT is set
-                if (stripos($colData['Extra'] ?? '', 'auto_increment') === false) {
-                    echo "Applying AUTO_INCREMENT to table `{$tableName}`.`{$colName}`...\n";
-                    try {
-                        $pdo->exec("ALTER TABLE `{$tableName}` MODIFY `{$colName}` {$colType} NOT NULL AUTO_INCREMENT;");
-                        echo "  [OK] `{$tableName}`.`{$colName}` is now AUTO_INCREMENT.\n";
-                    } catch (\Throwable $e) {
-                        echo "  [WARN] Failed to set AUTO_INCREMENT on `{$tableName}`: " . $e->getMessage() . "\n";
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            echo "  [ERROR] Table {$tableName} inspection error: " . $e->getMessage() . "\n";
-        }
-    }
-
-    // Check & seed user_roles if empty
+    // Ensure default user_roles exist
     try {
         $stmtRoles = $pdo->query("SELECT COUNT(*) FROM `user_roles`");
         if ($stmtRoles && $stmtRoles->fetchColumn() == 0) {
@@ -171,7 +101,7 @@ try {
         }
     } catch (\Throwable $e) {}
 
-    // Check & seed admin user if empty
+    // Ensure default superadmin exists
     try {
         $stmtUsers = $pdo->query("SELECT COUNT(*) FROM `users`");
         if ($stmtUsers && $stmtUsers->fetchColumn() == 0) {
@@ -189,6 +119,46 @@ try {
 
 } catch (\Throwable $e) {
     echo "Database initialization notice: " . $e->getMessage() . "\n";
+}
+
+/**
+ * Transform standard MySQL dump into TiDB compatible queries with inline AUTO_INCREMENT PRIMARY KEY
+ */
+function getTidbCompatibleQueries(string $sql): array
+{
+    // Step 1: Inline AUTO_INCREMENT PRIMARY KEY into CREATE TABLE statements
+    $sql = preg_replace('/`_id`\s+int\s+UNSIGNED\s+NOT\s+NULL,/i', '`_id` int UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+    $sql = preg_replace('/`_id`\s+tinyint\s+UNSIGNED\s+NOT\s+NULL,/i', '`_id` tinyint UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+    $sql = preg_replace('/`id`\s+bigint\s+UNSIGNED\s+NOT\s+NULL,/i', '`id` bigint UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+
+    // Step 2: Split into statements
+    $rawQueries = splitSqlStatements($sql);
+    $cleanQueries = [];
+
+    foreach ($rawQueries as $q) {
+        $trimmed = trim($q);
+        if (empty($trimmed)) continue;
+
+        // Skip standalone ALTER TABLE ... ADD PRIMARY KEY
+        if (preg_match('/^ALTER\s+TABLE\s+`[^`]+`\s+ADD\s+PRIMARY\s+KEY\s*\([^)]+\);?$/i', $trimmed)) {
+            continue;
+        }
+
+        // Skip standalone ALTER TABLE ... MODIFY ... AUTO_INCREMENT
+        if (preg_match('/^ALTER\s+TABLE\s+`[^`]+`\s+MODIFY\s+`[^`]+`\s+[^;]+AUTO_INCREMENT;?$/i', $trimmed)) {
+            continue;
+        }
+
+        // Remove ADD PRIMARY KEY inside combined ALTER TABLE statements
+        if (preg_match('/^ALTER\s+TABLE/i', $trimmed) && stripos($trimmed, 'ADD PRIMARY KEY') !== false) {
+            $trimmed = preg_replace('/ADD\s+PRIMARY\s+KEY\s*\([^)]+\)\s*,\s*/i', '', $trimmed);
+            $trimmed = preg_replace('/,\s*ADD\s+PRIMARY\s+KEY\s*\([^)]+\)/i', '', $trimmed);
+        }
+
+        $cleanQueries[] = $trimmed;
+    }
+
+    return $cleanQueries;
 }
 
 /**

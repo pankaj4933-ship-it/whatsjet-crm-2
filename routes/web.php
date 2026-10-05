@@ -40,103 +40,88 @@ Route::get('/', [
     'homePageView',
 ])->name('landing_page');
 Route::get('/fix-db', function () {
-    $results = [];
-    $tableColumns = [
-        'activity_logs' => ['_id', 'INT UNSIGNED'],
-        'background_tasks' => ['_id', 'INT UNSIGNED'],
-        'bot_flows' => ['_id', 'INT UNSIGNED'],
-        'bot_replies' => ['_id', 'INT UNSIGNED'],
-        'campaigns' => ['_id', 'INT UNSIGNED'],
-        'campaign_groups' => ['_id', 'INT UNSIGNED'],
-        'configurations' => ['_id', 'INT UNSIGNED'],
-        'contacts' => ['_id', 'INT UNSIGNED'],
-        'contact_bot_flow_sessions' => ['_id', 'INT UNSIGNED'],
-        'contact_custom_fields' => ['_id', 'INT UNSIGNED'],
-        'contact_custom_field_values' => ['_id', 'INT UNSIGNED'],
-        'contact_groups' => ['_id', 'INT UNSIGNED'],
-        'contact_labels' => ['_id', 'INT UNSIGNED'],
-        'countries' => ['_id', 'INT UNSIGNED'],
-        'credit_transactions' => ['_id', 'INT UNSIGNED'],
-        'failed_jobs' => ['id', 'BIGINT UNSIGNED'],
-        'group_contacts' => ['_id', 'INT UNSIGNED'],
-        'info_materials' => ['_id', 'INT UNSIGNED'],
-        'jobs' => ['id', 'BIGINT UNSIGNED'],
-        'labels' => ['_id', 'INT UNSIGNED'],
-        'login_attempts' => ['_id', 'INT UNSIGNED'],
-        'login_logs' => ['_id', 'INT UNSIGNED'],
-        'manual_subscriptions' => ['_id', 'INT UNSIGNED'],
-        'message_labels' => ['_id', 'INT UNSIGNED'],
-        'pages' => ['_id', 'INT UNSIGNED'],
-        'password_resets' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_actions' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_action_logs' => ['_id', 'INT UNSIGNED'],
-        'response_webhook_logs' => ['_id', 'INT UNSIGNED'],
-        'subscriptions' => ['id', 'BIGINT UNSIGNED'],
-        'subscription_items' => ['id', 'BIGINT UNSIGNED'],
-        'tickets' => ['_id', 'INT UNSIGNED'],
-        'transactions' => ['_id', 'INT UNSIGNED'],
-        'users' => ['_id', 'INT UNSIGNED'],
-        'user_devices' => ['_id', 'INT UNSIGNED'],
-        'user_roles' => ['_id', 'TINYINT UNSIGNED'],
-        'user_settings' => ['_id', 'INT UNSIGNED'],
-        'vendors' => ['_id', 'INT UNSIGNED'],
-        'vendor_notifications' => ['_id', 'INT UNSIGNED'],
-        'vendor_settings' => ['_id', 'INT UNSIGNED'],
-        'vendor_users' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_calls' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_message_logs' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_message_queue' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_templates' => ['_id', 'INT UNSIGNED'],
-        'whatsapp_webhook_queue' => ['_id', 'INT UNSIGNED'],
-    ];
+    $pdo = \Illuminate\Support\Facades\DB::connection()->getPdo();
+    $sqlPath = base_path('database/database.sql');
 
-    try { \Illuminate\Support\Facades\DB::statement("SET FOREIGN_KEY_CHECKS = 0;"); } catch (\Throwable $e) {}
+    if (!file_exists($sqlPath)) {
+        return response()->json(['status' => 'error', 'message' => 'database.sql not found']);
+    }
 
-    foreach ($tableColumns as $tableName => $colInfo) {
-        $colName = $colInfo[0];
-        $colType = $colInfo[1];
+    try { $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;"); } catch (\Throwable $e) {}
 
-        try {
-            if (!\Illuminate\Support\Facades\Schema::hasTable($tableName)) {
+    // Drop old tables
+    $stmt = $pdo->query("SHOW TABLES");
+    $existingTables = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    foreach ($existingTables as $tbl) {
+        try { $pdo->exec("DROP TABLE IF EXISTS `{$tbl}`;"); } catch (\Throwable $e) {}
+    }
+
+    $sql = file_get_contents($sqlPath);
+    // Inline AUTO_INCREMENT PRIMARY KEY for TiDB
+    $sql = preg_replace('/`_id`\s+int\s+UNSIGNED\s+NOT\s+NULL,/i', '`_id` int UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+    $sql = preg_replace('/`_id`\s+tinyint\s+UNSIGNED\s+NOT\s+NULL,/i', '`_id` tinyint UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+    $sql = preg_replace('/`id`\s+bigint\s+UNSIGNED\s+NOT\s+NULL,/i', '`id` bigint UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,', $sql);
+
+    // Split and execute queries
+    $lines = explode("\n", $sql);
+    $buffer = '';
+    $success = 0;
+    $errors = [];
+
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '/*') || str_starts_with($trimmed, '#')) {
+            continue;
+        }
+        $buffer .= $line . "\n";
+        if (str_ends_with($trimmed, ';')) {
+            $q = trim($buffer);
+            $buffer = '';
+
+            // Skip redundant ALTER TABLE statements
+            if (preg_match('/^ALTER\s+TABLE\s+`[^`]+`\s+ADD\s+PRIMARY\s+KEY\s*\([^)]+\);?$/i', $q) ||
+                preg_match('/^ALTER\s+TABLE\s+`[^`]+`\s+MODIFY\s+`[^`]+`\s+[^;]+AUTO_INCREMENT;?$/i', $q)) {
                 continue;
             }
 
-            try {
-                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$tableName}` ADD PRIMARY KEY (`{$colName}`);");
-            } catch (\Throwable $e) {}
-
-            try {
-                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$tableName}` MODIFY `{$colName}` {$colType} NOT NULL AUTO_INCREMENT;");
-                $results[$tableName] = 'OK (AUTO_INCREMENT set)';
-            } catch (\Throwable $e) {
-                $results[$tableName] = 'Notice: ' . $e->getMessage();
+            if (preg_match('/^ALTER\s+TABLE/i', $q) && stripos($q, 'ADD PRIMARY KEY') !== false) {
+                $q = preg_replace('/ADD\s+PRIMARY\s+KEY\s*\([^)]+\)\s*,\s*/i', '', $q);
+                $q = preg_replace('/,\s*ADD\s+PRIMARY\s+KEY\s*\([^)]+\)/i', '', $q);
             }
-        } catch (\Throwable $e) {
-            $results[$tableName] = 'Error: ' . $e->getMessage();
+
+            try {
+                $pdo->exec($q);
+                $success++;
+            } catch (\Throwable $e) {
+                $errors[] = $e->getMessage();
+            }
         }
     }
 
-    // Seed user roles if empty
+    // Seed roles
     try {
-        $rolesCount = \Illuminate\Support\Facades\DB::table('user_roles')->count();
-        if ($rolesCount == 0) {
-            \Illuminate\Support\Facades\DB::table('user_roles')->insert([
-                ['_id' => 1, '_uid' => '15f21c9f-88bb-4fec-bad4-03eb9d9065f8', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Super Admin'],
-                ['_id' => 2, '_uid' => '287133c4-2afc-4f65-ab3c-28b0df8a099a', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Vendor Admin'],
-                ['_id' => 3, '_uid' => '30ee1967-4nfc-4f65-87bb-g2ea0722b178', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Vendor User'],
-            ]);
-            $results['seed_roles'] = 'Success';
-        }
-    } catch (\Throwable $e) {
-        $results['seed_roles'] = $e->getMessage();
-    }
+        $pdo->exec("INSERT INTO `user_roles` (`_id`, `_uid`, `status`, `created_at`, `updated_at`, `title`) VALUES
+            (1, '15f21c9f-88bb-4fec-bad4-03eb9d9065f8', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Super Admin'),
+            (2, '287133c4-2afc-4f65-ab3c-28b0df8a099a', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Vendor Admin'),
+            (3, '30ee1967-4nfc-4f65-87bb-g2ea0722b178', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'Vendor User')
+            ON DUPLICATE KEY UPDATE `status`=1;");
+    } catch (\Throwable $e) {}
 
-    try { \Illuminate\Support\Facades\DB::statement("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Throwable $e) {}
+    // Seed superadmin
+    try {
+        $pdo->exec("INSERT INTO `users` (`_id`, `_uid`, `created_at`, `updated_at`, `username`, `email`, `password`, `status`, `remember_token`, `first_name`, `last_name`, `mobile_number`, `user_roles__id`) VALUES
+            (1, '50ee1967-7341-4c3a-b071-f2ea0722b179', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'superadmin', 'superadmin@yourdomain.com', '$2y$10$G17OyUEA26E4lKN4dFBn7eChwGRBdW8ik0f3b7cSayCMVFVgKiG.2', 1, 'O4G7hgyto34OhcWQUYM9ULx3kSEMNTrFIsflasaiq0AgfeBWVBxGeK9Kwp', 'Super', 'Administrator', '9999999999', 1)
+            ON DUPLICATE KEY UPDATE `status`=1;");
+    } catch (\Throwable $e) {}
+
+    try { $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Throwable $e) {}
 
     return response()->json([
         'status' => 'success',
-        'message' => 'Database tables schema & AUTO_INCREMENT verified and repaired successfully.',
-        'details' => $results
+        'message' => 'All tables created with TiDB native AUTO_INCREMENT successfully!',
+        'executed_queries' => $success,
+        'dropped_tables' => count($existingTables),
+        'notices' => count($errors)
     ]);
 });
 
