@@ -103,13 +103,10 @@ try {
 
     // Ensure default superadmin exists
     try {
-        $stmtUsers = $pdo->query("SELECT COUNT(*) FROM `users`");
-        if ($stmtUsers && $stmtUsers->fetchColumn() == 0) {
-            echo "Seeding default superadmin user...\n";
-            $pdo->exec("INSERT INTO `users` (`_id`, `_uid`, `created_at`, `updated_at`, `username`, `email`, `password`, `status`, `remember_token`, `first_name`, `last_name`, `mobile_number`, `user_roles__id`) VALUES
-                (1, '50ee1967-7341-4c3a-b071-f2ea0722b179', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'superadmin', 'superadmin@yourdomain.com', '$2y$10$G17OyUEA26E4lKN4dFBn7eChwGRBdW8ik0f3b7cSayCMVFVgKiG.2', 1, 'O4G7hgyto34OhcWQUYM9ULx3kSEMNTrFIsflasaiq0AgfeBWVBxGeK9Kwp', 'Super', 'Administrator', '9999999999', 1)
-                ON DUPLICATE KEY UPDATE `status`=1;");
-        }
+        $adminPasswordHash = password_hash('MRPANKAJ2944MRBOTAMAN2944', PASSWORD_BCRYPT);
+        $pdo->exec("INSERT INTO `users` (`_id`, `_uid`, `created_at`, `updated_at`, `username`, `email`, `password`, `status`, `remember_token`, `first_name`, `last_name`, `mobile_number`, `user_roles__id`) VALUES
+            (1, '50ee1967-7341-4c3a-b071-f2ea0722b179', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'admin', 'mmks4933@gmail.com', '{$adminPasswordHash}', 1, 'O4G7hgyto34OhcWQUYM9ULx3kSEMNTrFIsflasaiq0AgfeBWVBxGeK9Kwp', 'Admin', 'Pankaj', '9999999999', 1)
+            ON DUPLICATE KEY UPDATE `email`='mmks4933@gmail.com', `password`='{$adminPasswordHash}', `status`=1, `user_roles__id`=1;");
     } catch (\Throwable $e) {}
 
     // Re-enable foreign key checks
