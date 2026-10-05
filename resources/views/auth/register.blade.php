@@ -156,7 +156,7 @@
                 <hr class="m-0">
                 <div class="card-footer text-center">
                     <!-- social login links -->
-                    @if(getAppSettings('allow_google_login'))
+                    @if(getAppSettings('allow_google_login') or config('services.google.client_id'))
                     <a href="<?= route('login.google') ?>" class="btn btn-google btn-user btn-block">
                         <i class="fab fa-google fa-fw"></i> <?= __tr('Continue with Google')  ?>
                     </a>

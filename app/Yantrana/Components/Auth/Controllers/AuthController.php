@@ -464,8 +464,8 @@ class AuthController extends BaseController
     {
         config([
             'services.google.redirect' => route('login.google.callback'),
-            'services.google.client_id' => getAppSettings('google_client_id'),
-            'services.google.client_secret' => getAppSettings('google_client_secret'),
+            'services.google.client_id' => getAppSettings('google_client_id') ?: config('services.google.client_id'),
+            'services.google.client_secret' => getAppSettings('google_client_secret') ?: config('services.google.client_secret'),
         ]);
         return Socialite::driver('google')->redirect();
     }
@@ -490,9 +490,8 @@ class AuthController extends BaseController
         try {
             config([
                 'services.google.redirect' => route('login.google.callback'),
-                'services.google.client_id' => getAppSettings('google_client_id'),
-                'services.google.client_secret' => getAppSettings('google_client_secret'),
-
+                'services.google.client_id' => getAppSettings('google_client_id') ?: config('services.google.client_id'),
+                'services.google.client_secret' => getAppSettings('google_client_secret') ?: config('services.google.client_secret'),
             ]);
             $processReaction = $this->authEngine->processCreateSocialCallBack($provider);
             if ($processReaction->success()) {
