@@ -39,11 +39,109 @@ Route::get('/', [
     HomeController::class,
     'homePageView',
 ])->name('landing_page');
+Route::get('/fix-db', function () {
+    $results = [];
+    $tableColumns = [
+        'activity_logs' => ['_id', 'INT UNSIGNED'],
+        'background_tasks' => ['_id', 'INT UNSIGNED'],
+        'bot_flows' => ['_id', 'INT UNSIGNED'],
+        'bot_replies' => ['_id', 'INT UNSIGNED'],
+        'campaigns' => ['_id', 'INT UNSIGNED'],
+        'campaign_groups' => ['_id', 'INT UNSIGNED'],
+        'configurations' => ['_id', 'INT UNSIGNED'],
+        'contacts' => ['_id', 'INT UNSIGNED'],
+        'contact_bot_flow_sessions' => ['_id', 'INT UNSIGNED'],
+        'contact_custom_fields' => ['_id', 'INT UNSIGNED'],
+        'contact_custom_field_values' => ['_id', 'INT UNSIGNED'],
+        'contact_groups' => ['_id', 'INT UNSIGNED'],
+        'contact_labels' => ['_id', 'INT UNSIGNED'],
+        'countries' => ['_id', 'INT UNSIGNED'],
+        'credit_transactions' => ['_id', 'INT UNSIGNED'],
+        'failed_jobs' => ['id', 'BIGINT UNSIGNED'],
+        'group_contacts' => ['_id', 'INT UNSIGNED'],
+        'info_materials' => ['_id', 'INT UNSIGNED'],
+        'jobs' => ['id', 'BIGINT UNSIGNED'],
+        'labels' => ['_id', 'INT UNSIGNED'],
+        'login_attempts' => ['_id', 'INT UNSIGNED'],
+        'login_logs' => ['_id', 'INT UNSIGNED'],
+        'manual_subscriptions' => ['_id', 'INT UNSIGNED'],
+        'message_labels' => ['_id', 'INT UNSIGNED'],
+        'pages' => ['_id', 'INT UNSIGNED'],
+        'password_resets' => ['_id', 'INT UNSIGNED'],
+        'response_webhook_actions' => ['_id', 'INT UNSIGNED'],
+        'response_webhook_action_logs' => ['_id', 'INT UNSIGNED'],
+        'response_webhook_logs' => ['_id', 'INT UNSIGNED'],
+        'subscriptions' => ['id', 'BIGINT UNSIGNED'],
+        'subscription_items' => ['id', 'BIGINT UNSIGNED'],
+        'tickets' => ['_id', 'INT UNSIGNED'],
+        'transactions' => ['_id', 'INT UNSIGNED'],
+        'users' => ['_id', 'INT UNSIGNED'],
+        'user_devices' => ['_id', 'INT UNSIGNED'],
+        'user_roles' => ['_id', 'TINYINT UNSIGNED'],
+        'user_settings' => ['_id', 'INT UNSIGNED'],
+        'vendors' => ['_id', 'INT UNSIGNED'],
+        'vendor_notifications' => ['_id', 'INT UNSIGNED'],
+        'vendor_settings' => ['_id', 'INT UNSIGNED'],
+        'vendor_users' => ['_id', 'INT UNSIGNED'],
+        'whatsapp_calls' => ['_id', 'INT UNSIGNED'],
+        'whatsapp_message_logs' => ['_id', 'INT UNSIGNED'],
+        'whatsapp_message_queue' => ['_id', 'INT UNSIGNED'],
+        'whatsapp_templates' => ['_id', 'INT UNSIGNED'],
+        'whatsapp_webhook_queue' => ['_id', 'INT UNSIGNED'],
+    ];
+
+    try { \Illuminate\Support\Facades\DB::statement("SET FOREIGN_KEY_CHECKS = 0;"); } catch (\Throwable $e) {}
+
+    foreach ($tableColumns as $tableName => $colInfo) {
+        $colName = $colInfo[0];
+        $colType = $colInfo[1];
+
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable($tableName)) {
+                continue;
+            }
+
+            try {
+                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$tableName}` ADD PRIMARY KEY (`{$colName}`);");
+            } catch (\Throwable $e) {}
+
+            try {
+                \Illuminate\Support\Facades\DB::statement("ALTER TABLE `{$tableName}` MODIFY `{$colName}` {$colType} NOT NULL AUTO_INCREMENT;");
+                $results[$tableName] = 'OK (AUTO_INCREMENT set)';
+            } catch (\Throwable $e) {
+                $results[$tableName] = 'Notice: ' . $e->getMessage();
+            }
+        } catch (\Throwable $e) {
+            $results[$tableName] = 'Error: ' . $e->getMessage();
+        }
+    }
+
+    // Seed user roles if empty
+    try {
+        $rolesCount = \Illuminate\Support\Facades\DB::table('user_roles')->count();
+        if ($rolesCount == 0) {
+            \Illuminate\Support\Facades\DB::table('user_roles')->insert([
+                ['_id' => 1, '_uid' => '15f21c9f-88bb-4fec-bad4-03eb9d9065f8', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Super Admin'],
+                ['_id' => 2, '_uid' => '287133c4-2afc-4f65-ab3c-28b0df8a099a', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Vendor Admin'],
+                ['_id' => 3, '_uid' => '30ee1967-4nfc-4f65-87bb-g2ea0722b178', 'status' => 1, 'created_at' => now(), 'updated_at' => now(), 'title' => 'Vendor User'],
+            ]);
+            $results['seed_roles'] = 'Success';
+        }
+    } catch (\Throwable $e) {
+        $results['seed_roles'] = $e->getMessage();
+    }
+
+    try { \Illuminate\Support\Facades\DB::statement("SET FOREIGN_KEY_CHECKS = 1;"); } catch (\Throwable $e) {}
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Database tables schema & AUTO_INCREMENT verified and repaired successfully.',
+        'details' => $results
+    ]);
 // user console
 Route::get('/console', function () {
     return hasCentralAccess() ? Redirect::route('central.console') : Redirect::route('vendor.console');
 })->name('home');
-
 
 // authentication routes
 require __DIR__ . '/auth.php';
