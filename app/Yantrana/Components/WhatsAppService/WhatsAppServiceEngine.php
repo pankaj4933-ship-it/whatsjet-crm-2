@@ -4404,9 +4404,6 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
     public function processDisconnectAccount($vendorId = null)
     {
         $vendorId  = $vendorId ?: getVendorId();
-        if (!isWhatsAppBusinessAccountReady($vendorId)) {
-            return $this->engineFailedResponse([], __tr('Account should be ready in order to disconnect.'));
-        }
         try {
             ignoreFacebookApiError(true);
             // remove webhooks
@@ -4433,6 +4430,12 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
             'whatsapp_phone_numbers_data',
             'whatsapp_onboarding_raw_data',
             'whatsapp_token_info_data',
+            'whatsapp_phone_numbers',
+            'marketing_messages_onboarding_status',
+            'template_analytics_status',
+            'whatsapp_health_status_data',
+            'whatsapp_access_token_expired',
+            'test_recipient_contact',
         ], $vendorId)->success()) {
             return $this->engineSuccessResponse([], __tr('Account has been disconnected successfully'));
         }
