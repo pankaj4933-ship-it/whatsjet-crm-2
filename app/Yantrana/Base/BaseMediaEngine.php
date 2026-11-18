@@ -160,7 +160,11 @@ class BaseMediaEngine extends BaseEngine
             // Store file on destination
             if ($this->disk->storeFileAs($folderPath, $file, $fileName)) {
                 if ($storeAsPublic) {
-                    $this->disk->setFileAccessType($folderPath.DIRECTORY_SEPARATOR.$fileName, 'public');
+                    try {
+                        $this->disk->setFileAccessType($folderPath.DIRECTORY_SEPARATOR.$fileName, 'public');
+                    } catch (\Throwable $e) {
+                        // S3-compatible providers handle ACL at bucket level
+                    }
                 }
 
                 if ($deleteExisting and $this->disk->isExists($folderPath.DIRECTORY_SEPARATOR.$deleteExisting)) {
@@ -206,7 +210,8 @@ class BaseMediaEngine extends BaseEngine
             }
             $tempFolderPath = getPathByKey('user_temp_uploads', $options['pathParameters']);
             // Check exists of file
-            if ($this->disk->isExists($tempFolderPath.DIRECTORY_SEPARATOR.$fileName) === false) {
+            $tempFullPath = $tempFolderPath.DIRECTORY_SEPARATOR.$fileName;
+            if ($this->disk->isExists($tempFullPath) === false && !file_exists(public_path($tempFullPath))) {
                 return $this->engineFailedResponse([], __tr('File does not exists.'));
             }
 
@@ -315,6 +320,20 @@ class BaseMediaEngine extends BaseEngine
         $processUploadResult = $this->processUpload($inputFile, $tempUploadFolderPath, $requestFor);
         $this->disk = YesFileStorage::on($this->currentDisk);
 
+        // Also sync temp file to cloud storage (S3) so the user immediately sees it in the bucket
+        // and so it survives Render container restarts!
+        if ($processUploadResult->success() && $this->currentDisk !== 'public-media-storage') {
+            try {
+                $fileName = $processUploadResult->data('fileName');
+                $localPath = public_path($tempUploadFolderPath . DIRECTORY_SEPARATOR . $fileName);
+                if (file_exists($localPath)) {
+                    $this->disk->storeFileAs($tempUploadFolderPath, $localPath, $fileName);
+                }
+            } catch (\Throwable $e) {
+                // Non-fatal sync
+            }
+        }
+
         return $processUploadResult;
     }
     /**
@@ -376,10 +395,55 @@ class BaseMediaEngine extends BaseEngine
             $this->disk = YesFileStorage::on('public-media-storage');
             $path = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
             $filePath = $path.DIRECTORY_SEPARATOR.$uploadedFile;
-            if (! $this->disk->isExists($filePath)) {
-                return $this->engineFailedResponse(['show_message' => true], __tr('File not found'));
+
+            $fileExists = false;
+            try {
+                $fileExists = $this->disk->isExists($filePath);
+            } catch (\Throwable $e) {
+                $fileExists = false;
             }
-            $uploadedFile = $this->uploadedFileInstance($this->disk->getStoragePath($filePath));
+
+            if (!$fileExists && file_exists(public_path($filePath))) {
+                $fileExists = true;
+            }
+
+            // If not found locally (e.g. Render redeployed or restarted container),
+            // restore the temp file from S3 bucket!
+            if (!$fileExists && $this->currentDisk !== 'public-media-storage') {
+                try {
+                    $cloudDisk = YesFileStorage::on($this->currentDisk);
+                    if ($cloudDisk->isExists($filePath)) {
+                        $fileContents = $cloudDisk->getFileIfExists($filePath);
+                        if ($fileContents) {
+                            $localDir = public_path($path);
+                            if (!File::isDirectory($localDir)) {
+                                File::makeDirectory($localDir, 0777, true, true);
+                            }
+                            file_put_contents(public_path($filePath), $fileContents);
+                            $fileExists = true;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $fileExists = false;
+                }
+            }
+
+            if (! $fileExists) {
+                return $this->engineFailedResponse(['show_message' => true], __tr('Temporary file expired or not found, please select the image again.'));
+            }
+
+            $storagePath = null;
+            try {
+                $storagePath = $this->disk->getStoragePath($filePath);
+            } catch (\Throwable $e) {
+                $storagePath = public_path($filePath);
+            }
+
+            if (!$storagePath || !file_exists($storagePath)) {
+                $storagePath = public_path($filePath);
+            }
+
+            $uploadedFile = $this->uploadedFileInstance($storagePath);
             $this->disk = YesFileStorage::on($this->currentDisk);
         }
 
@@ -412,12 +476,28 @@ class BaseMediaEngine extends BaseEngine
         }
 
         $path = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
+        $targetDir = public_path($path);
 
-        if (! File::isDirectory($path)) {
-            File::makeDirectory($path, $mode = 0777, true, true);
+        if (! File::isDirectory($targetDir)) {
+            File::makeDirectory($targetDir, $mode = 0777, true, true);
         }
 
-        if ($uploadedFile->move($path, $fileName)) {
+        $targetFilePath = $targetDir . DIRECTORY_SEPARATOR . $fileName;
+        $moved = false;
+        try {
+            if ($uploadedFile->move($targetDir, $fileName)) {
+                $moved = true;
+            }
+        } catch (\Throwable $e) {
+            if (isset($storagePath) && file_exists($storagePath)) {
+                $moved = File::copy($storagePath, $targetFilePath);
+                if ($moved) {
+                    @File::delete($storagePath);
+                }
+            }
+        }
+
+        if ($moved || file_exists($targetFilePath)) {
             return $this->engineSuccessResponse([
                 'fileExtension' => $fileExtension,
                 'fileMimeType' => $fileMimeType,

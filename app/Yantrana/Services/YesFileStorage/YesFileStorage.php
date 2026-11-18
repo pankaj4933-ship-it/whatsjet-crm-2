@@ -256,8 +256,12 @@ class YesFileStorage // extends Filesystem
      */
     public function getFileIfExists($path)
     {
-        if ($this->storageInstance->exists($path)) {
-            return $this->storageInstance->get($path);
+        try {
+            if ($this->storageInstance->exists($path)) {
+                return $this->storageInstance->get($path);
+            }
+        } catch (\Throwable $e) {
+            return false;
         }
 
         return false;
@@ -385,7 +389,11 @@ class YesFileStorage // extends Filesystem
 
     public function getStoragePath($path = '')
     {
-        return $this->storagePath.$path;
+        try {
+            return $this->storageInstance->path($path);
+        } catch (\Throwable $e) {
+            return public_path($path);
+        }
     }
 
     /**
