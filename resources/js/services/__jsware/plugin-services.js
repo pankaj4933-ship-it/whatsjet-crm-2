@@ -248,44 +248,56 @@
                                     },
                                     withCredentials: false,
                                     onload: function (response) {
-                                        var requestData = JSON.parse(response);
-                                        // Show message when upload complete
-                                        switch (requestData.reaction) {
-                                            case 1:
-                                                $this.find('.lw-uploaded-file').val(requestData.data.fileName);
-                                                showSuccessMessage(requestData.data.message);
-                                                break;
-                                            case 14:
-                                                showWarnMessage(requestData.data.message);
-                                                break;
-                                            default:
-                                                showErrorMessage(requestData.data.message);
-                                                break;
-                                        }
+                                        try {
+                                            var requestData = JSON.parse(response);
+                                            // Show message when upload complete
+                                            switch (requestData.reaction) {
+                                                case 1:
+                                                    $this.find('.lw-uploaded-file').val(requestData.data ? requestData.data.fileName : '');
+                                                    showSuccessMessage(requestData.data ? requestData.data.message : 'Uploaded successfully');
+                                                    break;
+                                                case 14:
+                                                    showWarnMessage(requestData.data ? requestData.data.message : 'Upload warning');
+                                                    break;
+                                                default:
+                                                    showErrorMessage(requestData.data ? requestData.data.message : 'Upload failed');
+                                                    break;
+                                            }
 
-                                        if ($this.data('file-input-element')) {
-                                            var $fileInputElement = $($this.data('file-input-element'));
-                                            if ($fileInputElement.length) {
-                                                $fileInputElement.val(requestData.data.fileName);
+                                            if ($this.data('file-input-element')) {
+                                                var $fileInputElement = $($this.data('file-input-element'));
+                                                if ($fileInputElement.length && requestData.data) {
+                                                    $fileInputElement.val(requestData.data.fileName);
+                                                }
                                             }
-                                        }
-                                        // use this if you require raw uploaded like original name etc
-                                        if ($this.data('raw-upload-data-element')) {
-                                            var $rawUploadElement = $($this.data('raw-upload-data-element'));
-                                            if ($rawUploadElement.length) {
-                                                $rawUploadElement.val(JSON.stringify(requestData.data));
+                                            // use this if you require raw uploaded like original name etc
+                                            if ($this.data('raw-upload-data-element')) {
+                                                var $rawUploadElement = $($this.data('raw-upload-data-element'));
+                                                if ($rawUploadElement.length && requestData.data) {
+                                                    $rawUploadElement.val(JSON.stringify(requestData.data));
+                                                }
                                             }
-                                        }
-                                        var responseCallbackFn = window[responseCallback];
-                                        if (typeof responseCallbackFn === 'function') {
-                                            responseCallbackFn(requestData, $this);
+                                            var responseCallbackFn = window[responseCallback];
+                                            if (typeof responseCallbackFn === 'function') {
+                                                responseCallbackFn(requestData, $this);
+                                            }
+                                            return requestData.data ? requestData.data.fileName : response;
+                                        } catch (e) {
+                                            showErrorMessage("Upload failed: Unexpected server response.");
+                                            return response;
                                         }
                                     },
                                     onerror: function (response) {
-                                        var requestData = JSON.parse(response);
-                                        // Show message when upload complete
-                                        if (requestData.reaction) {
-                                            showErrorMessage(requestData.data.message);
+                                        try {
+                                            var requestData = JSON.parse(response);
+                                            // Show message when upload complete
+                                            if (requestData.reaction) {
+                                                showErrorMessage(requestData.data.message);
+                                            } else if (requestData.message) {
+                                                showErrorMessage(requestData.message);
+                                            }
+                                        } catch (e) {
+                                            showErrorMessage("Upload failed due to server error (500).");
                                         }
                                     }
                                 }

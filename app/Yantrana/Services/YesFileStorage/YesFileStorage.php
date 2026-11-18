@@ -29,6 +29,7 @@ namespace App\Yantrana\Services\YesFileStorage;
 
 use Exception;
 use Illuminate\Http\File;
+use Illuminate\Http\UploadedFile;
 use Storage;
 
 /**
@@ -190,7 +191,7 @@ class YesFileStorage // extends Filesystem
             return $this->storeFileAs(str_replace('/'.$lastItemOfPath, '', $path), $file, $lastItemOfPath, $options);
         }
 
-        if ($file instanceof Illuminate\Http\UploadedFile) {
+        if ($file instanceof UploadedFile or $file instanceof File) {
             return $this->storageInstance->putFile($path, $file, $options);
         }
 
@@ -210,8 +211,8 @@ class YesFileStorage // extends Filesystem
     {
 
         // uploaded files
-        if ($file instanceof Illuminate\Http\UploadedFile) {
-            return $this->storageInstance->putFile($path, $file, $options);
+        if ($file instanceof UploadedFile or $file instanceof File) {
+            return $this->storageInstance->putFileAs($path, $file, $name, $options);
         }
 
         return $this->storageInstance->putFileAs($path, new File($file), $name, $options);

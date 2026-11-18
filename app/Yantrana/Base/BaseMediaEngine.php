@@ -127,8 +127,8 @@ class BaseMediaEngine extends BaseEngine
 
             return $this->engineFailedResponse([], __tr('Something went wrong, Please try again.'));
 
-            // catch exception
-        } catch (\Exception $e) {
+            // catch exception / error
+        } catch (\Throwable $e) {
             return $this->engineFailedResponse([], $e->getMessage());
         }
     }
