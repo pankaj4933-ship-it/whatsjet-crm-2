@@ -18,14 +18,6 @@
     RewriteCond %{REQUEST_URI} (.+)/$
     RewriteRule ^ %1 [L,R=301]
 
-    # Return immediate lightweight 404 for missing static media assets
-    # Prevents triggering full Laravel/PHP framework boot for missing files (avoids RAM spikes & OOM crashes)
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^media-storage/ - [R=404,L]
-
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule \.(?:jpe?g|png|gif|ico|webp|svg|mp3|ogg|wav|mp4|webm|woff2?|ttf|eot)$ - [R=404,L]
-
     # Send Requests To Front Controller...
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f

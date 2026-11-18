@@ -40,16 +40,16 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
     && sed -ri -e 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
-# Configure Apache ServerName, KeepAlive and MPM Prefork for 512MB container
+# Configure Apache ServerName, KeepAlive and MPM Prefork
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf \
     && printf "KeepAlive On\n\
 MaxKeepAliveRequests 100\n\
 KeepAliveTimeout 2\n\
 <IfModule mpm_prefork_module>\n\
-    StartServers             3\n\
-    MinSpareServers          2\n\
-    MaxSpareServers          5\n\
-    MaxRequestWorkers        15\n\
+    StartServers             5\n\
+    MinSpareServers          5\n\
+    MaxSpareServers         10\n\
+    MaxRequestWorkers        60\n\
     MaxConnectionsPerChild 500\n\
 </IfModule>\n" > /etc/apache2/mods-available/mpm_prefork.conf
 
