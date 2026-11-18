@@ -40,13 +40,16 @@ RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-av
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
     && sed -ri -e 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
 
-# Configure Apache MPM Prefork for low memory environments (Render Free 512MB RAM)
-# Caps max concurrent workers so Apache never exceeds container RAM limit
-RUN printf "<IfModule mpm_prefork_module>\n\
-    StartServers             2\n\
-    MinSpareServers          1\n\
-    MaxSpareServers          3\n\
-    MaxRequestWorkers        6\n\
+# Configure Apache ServerName, KeepAlive and MPM Prefork for 512MB container
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf \
+    && printf "KeepAlive On\n\
+MaxKeepAliveRequests 100\n\
+KeepAliveTimeout 2\n\
+<IfModule mpm_prefork_module>\n\
+    StartServers             3\n\
+    MinSpareServers          2\n\
+    MaxSpareServers          5\n\
+    MaxRequestWorkers        15\n\
     MaxConnectionsPerChild 500\n\
 </IfModule>\n" > /etc/apache2/mods-available/mpm_prefork.conf
 
