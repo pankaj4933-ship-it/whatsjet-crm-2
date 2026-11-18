@@ -227,7 +227,25 @@ class YesFileStorage // extends Filesystem
 
         $result = false;
         try {
-            if ($file instanceof UploadedFile or $file instanceof File) {
+            $rawContent = null;
+            if (is_string($file)) {
+                $filePath = $file;
+                if (!file_exists($filePath) && file_exists(public_path($filePath))) {
+                    $filePath = public_path($filePath);
+                }
+                if (file_exists($filePath)) {
+                    $rawContent = file_get_contents($filePath);
+                }
+            } elseif ($file instanceof File || $file instanceof UploadedFile) {
+                $realPath = $file->getRealPath();
+                if ($realPath && file_exists($realPath)) {
+                    $rawContent = file_get_contents($realPath);
+                }
+            }
+
+            if ($rawContent !== null && strlen($rawContent) > 0) {
+                $result = $this->storageInstance->put($path, $rawContent, $options);
+            } elseif ($file instanceof UploadedFile or $file instanceof File) {
                 $result = $this->storageInstance->putFile($path, $file, $options);
             } else {
                 if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
@@ -243,7 +261,9 @@ class YesFileStorage // extends Filesystem
         if (!$result) {
             try {
                 $localDisk = Storage::disk('public-media-storage');
-                if ($file instanceof UploadedFile or $file instanceof File) {
+                if ($rawContent !== null && strlen($rawContent) > 0) {
+                    $result = $localDisk->put($path, $rawContent, $options);
+                } elseif ($file instanceof UploadedFile or $file instanceof File) {
                     $result = $localDisk->putFile($path, $file, $options);
                 } else {
                     $result = $localDisk->putFile($path, new File($file), $options);
@@ -294,9 +314,27 @@ class YesFileStorage // extends Filesystem
             }
         }
         $result = false;
+        $targetKey = $path . '/' . $name;
+        $rawContent = null;
         try {
-            // uploaded files
-            if ($file instanceof UploadedFile or $file instanceof File) {
+            if (is_string($file)) {
+                $filePath = $file;
+                if (!file_exists($filePath) && file_exists(public_path($filePath))) {
+                    $filePath = public_path($filePath);
+                }
+                if (file_exists($filePath)) {
+                    $rawContent = file_get_contents($filePath);
+                }
+            } elseif ($file instanceof File || $file instanceof UploadedFile) {
+                $realPath = $file->getRealPath();
+                if ($realPath && file_exists($realPath)) {
+                    $rawContent = file_get_contents($realPath);
+                }
+            }
+
+            if ($rawContent !== null && strlen($rawContent) > 0) {
+                $result = $this->storageInstance->put($targetKey, $rawContent, $options);
+            } elseif ($file instanceof UploadedFile or $file instanceof File) {
                 $result = $this->storageInstance->putFileAs($path, $file, $name, $options);
             } else {
                 if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
@@ -317,7 +355,9 @@ class YesFileStorage // extends Filesystem
         if (!$result) {
             try {
                 $localDisk = Storage::disk('public-media-storage');
-                if ($file instanceof UploadedFile or $file instanceof File) {
+                if ($rawContent !== null && strlen($rawContent) > 0) {
+                    $result = $localDisk->put($targetKey, $rawContent, $options);
+                } elseif ($file instanceof UploadedFile or $file instanceof File) {
                     $result = $localDisk->putFileAs($path, $file, $name, $options);
                 } else {
                     $result = $localDisk->putFileAs($path, new File($file), $name, $options);

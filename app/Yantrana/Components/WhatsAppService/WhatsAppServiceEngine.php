@@ -2655,7 +2655,7 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
      * @param array $mediaMessageData
      * @return array
      */
-    protected function processMediaData($mediaMessageData, $request = null)
+    protected function processMediaData($mediaMessageData, $request = null, $vendorId = null)
     {
         $fileUrl = $fileName = $fileOriginalName = null;
         $rawUploadData = [];
@@ -2724,14 +2724,19 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
             $fileUrl = str_replace(' ', '%20', $fileUrl);
         }
         if (!$mediaUploadedId && $fileUrl) {
-            try {
-                $uploadResult = $this->whatsAppApiService->uploadMedia($fileUrl, $detectedMime);
-                if ($uploadResult && is_string($uploadResult)) {
-                    $mediaUploadedId = $uploadResult;
-                    $isNewMediaId = true;
+            $cacheKey = 'wa_media_id_' . md5($fileUrl);
+            $mediaUploadedId = cache()->get($cacheKey);
+            if (!$mediaUploadedId) {
+                try {
+                    $uploadResult = $this->whatsAppApiService->uploadMedia($fileUrl, $detectedMime, $vendorId);
+                    if ($uploadResult && is_string($uploadResult)) {
+                        $mediaUploadedId = $uploadResult;
+                        $isNewMediaId = true;
+                        cache()->put($cacheKey, $uploadResult, now()->addDays(28));
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Automatic uploadMedia failed: ' . $e->getMessage());
                 }
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::warning('Automatic uploadMedia failed: ' . $e->getMessage());
             }
         }
         return [
@@ -2905,7 +2910,7 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
                 $fileUrl = $request->media_url;
                 $fileOriginalName = $fileName;
             } */
-            $mediaData = $this->processMediaData($mediaMessageData, $request);
+            $mediaData = $this->processMediaData($mediaMessageData, $request, $vendorId);
             // if media data process failed then return with error message
             if(!isset($mediaData['link']) or !isset($mediaData['type'])) {
                 return $this->engineFailedResponse([], __tr('Failed to process media data, please try again.'));

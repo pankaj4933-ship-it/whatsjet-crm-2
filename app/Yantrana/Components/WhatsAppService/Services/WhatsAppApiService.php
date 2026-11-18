@@ -730,8 +730,11 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
      * @param  string|null  $mimeType  - required if provided file is url based
      * @return array
      */
-    public function uploadMedia(string $file, ?string $mimeType = null)
+    public function uploadMedia(string $file, ?string $mimeType = null, $vendorId = null)
     {
+        if ($vendorId) {
+            $this->vendorId = $vendorId;
+        }
         $tempLocalFile = null;
         try {
             if (Str::startsWith($file, 'http')) {
@@ -757,24 +760,47 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
                     ];
                     $mimeType = $knownMimes[$ext] ?? 'audio/ogg';
                 }
-                $tempLocalFile = tempnam(sys_get_temp_dir(), 'wa_upload_');
-                $context = stream_context_create([
-                    'http' => [
-                        'timeout' => 30,
-                        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-                    ],
-                    'ssl' => [
-                        'verify_peer' => false,
-                        'verify_peer_name' => false,
-                    ]
-                ]);
-                $fileContents = @file_get_contents($file, false, $context);
+
+                // 1. Try reading directly from S3 or local disk storage first
+                $fileContents = null;
+                $bucketName = env('AWS_BUCKET') ? trim(env('AWS_BUCKET')) : 'adscale-media';
+                if (str_contains($file, '/' . $bucketName . '/')) {
+                    $s3Key = explode('/' . $bucketName . '/', $file, 2)[1] ?? null;
+                    if ($s3Key) {
+                        $s3Key = ltrim(urldecode($s3Key), '/');
+                        try {
+                            if (Storage::disk('s3')->exists($s3Key)) {
+                                $fileContents = Storage::disk('s3')->get($s3Key);
+                            }
+                        } catch (\Throwable $e) {}
+                        if (!$fileContents) {
+                            try {
+                                if (Storage::disk('public-media-storage')->exists($s3Key)) {
+                                    $fileContents = Storage::disk('public-media-storage')->get($s3Key);
+                                }
+                            } catch (\Throwable $e) {}
+                        }
+                    }
+                }
+
+                // 2. Fall back to cURL download with User-Agent and redirects
+                if (!$fileContents) {
+                    $chDownload = curl_init($file);
+                    curl_setopt($chDownload, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($chDownload, CURLOPT_FOLLOWLOCATION, true);
+                    curl_setopt($chDownload, CURLOPT_TIMEOUT, 30);
+                    curl_setopt($chDownload, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($chDownload, CURLOPT_SSL_VERIFYHOST, false);
+                    curl_setopt($chDownload, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+                    $fileContents = curl_exec($chDownload);
+                    curl_close($chDownload);
+                }
+
                 if ($fileContents && strlen($fileContents) > 0) {
+                    $tempLocalFile = tempnam(sys_get_temp_dir(), 'wa_upload_');
                     file_put_contents($tempLocalFile, $fileContents);
                     $file = $tempLocalFile;
                 } else {
-                    @unlink($tempLocalFile);
-                    $tempLocalFile = null;
                     return null;
                 }
             } else {
@@ -799,15 +825,22 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
                 return null;
             }
 
+            $currentPhoneNumberId = $this->getServiceConfiguration('current_phone_number_id');
+            $accessToken = $this->getServiceConfiguration('whatsapp_access_token');
+            if (!$currentPhoneNumberId || !$accessToken) {
+                \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia missing config: phone_id=' . $currentPhoneNumberId . ', token=' . ($accessToken ? 'set' : 'missing'));
+                return null;
+            }
+
             $ch = curl_init();
-            $url = $this->baseApiRequestEndpoint . $this->getServiceConfiguration('current_phone_number_id') . '/media';
+            $url = $this->baseApiRequestEndpoint . $currentPhoneNumberId . '/media';
             $data = [
                 'file' => new \CURLFile($file, $mimeType),
                 'type' => $mimeType,
                 'messaging_product' => 'whatsapp',
             ];
             $headers = [];
-            $headers[] = 'Authorization: Bearer ' . $this->getServiceConfiguration('whatsapp_access_token');
+            $headers[] = 'Authorization: Bearer ' . $accessToken;
             $headers[] = 'Content-type: multipart/form-data';
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_POST, 1);
@@ -824,7 +857,8 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
                     if (! isset($result['error'])) {
                         return $result['id'] ?? null;
                     } else {
-                        return new Exception($result['error']['message'], $result['error']['code'] ? $result['error']['code'] : 500);
+                        \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia Meta API error: ' . json_encode($result['error']));
+                        return null;
                     }
                 }
 
