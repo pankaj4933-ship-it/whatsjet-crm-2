@@ -2,17 +2,17 @@
     <div class="lw-whatsapp-preview">
         <div class="card ">
             <div class="lw-whatsapp-header-placeholder ">
-                @if ($mediaValues['type'] == 'video')
-                <video class="lw-whatsapp-header-video" controls src="{{ $mediaValues['link'] }}"></video>
-                @elseif ($mediaValues['type'] == 'audio')
+                @if (($mediaValues['type'] ?? '') == 'video')
+                <video class="lw-whatsapp-header-video" controls src="{{ $mediaValues['link'] ?? '' }}"></video>
+                @elseif (($mediaValues['type'] ?? '') == 'audio')
                 <audio class="lw-whatsapp-header-audio my-auto mx-4" controls>
-                    <source src="{{ $mediaValues['link'] }}" type="{{ $mediaValues['mime_type'] ?: 'audio/ogg' }}">
+                    <source src="{{ $mediaValues['link'] ?? '' }}" type="{{ Arr::get($mediaValues, 'mime_type') ?: 'audio/ogg' }}">
                   {{  __tr('Your browser does not support the audio element.') }}
                   </audio>
-                @elseif (in_array($mediaValues['type'], ['image', 'sticker']))
-                <a class="lw-wa-message-document-link" target="_blank" href="{{ $mediaValues['link'] }}"><img class="lw-whatsapp-header-image" src="{{ $mediaValues['link'] }}" alt=""></a>
-                @elseif ($mediaValues['type'] == 'document')
-                <a class="lw-wa-message-document-link" title="{{ __tr('Document Link') }}" target="_blank" href="{{ $mediaValues['link'] }}"><i class="fa fa-5x fa-file-alt text-white"></i></a>
+                @elseif (in_array(($mediaValues['type'] ?? ''), ['image', 'sticker']))
+                <a class="lw-wa-message-document-link" target="_blank" href="{{ $mediaValues['link'] ?? '#' }}"><img class="lw-whatsapp-header-image" src="{{ $mediaValues['link'] ?? '#' }}" alt=""></a>
+                @elseif (($mediaValues['type'] ?? '') == 'document')
+                <a class="lw-wa-message-document-link" title="{{ __tr('Document Link') }}" target="_blank" href="{{ $mediaValues['link'] ?? '#' }}"><i class="fa fa-5x fa-file-alt text-white"></i></a>
                 @endif
             </div>
             @isset($mediaValues['caption'])
