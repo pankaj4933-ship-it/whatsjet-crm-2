@@ -119,27 +119,27 @@
                         <div class="my-3">
                         {{-- document --}}
                         <div x-show="headerType == 'document'" class="form-group col-sm-12">
-                        <input id="lwDocumentMediaFilepond" type="file" data-allow-revert="true"
+                        <input name="filepond" id="lwDocumentMediaFilepond" type="file" data-allow-revert="true"
                             data-label-idle="{{ __tr('Select Document') }}" class="lw-file-uploader" data-instant-upload="true"
-                            data-action="<?= route('media.upload_temp_media', 'whatsapp_document') ?>" id="lwDocumentField" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_document') ?>' />
+                            data-action="<?= route('media.upload_temp_media', 'whatsapp_document') ?>" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_document') ?>' />
                         </div>
                         {{-- image --}}
                         <div x-show="headerType == 'image'" class="form-group col-sm-12">
-                        <input id="lwImageMediaFilepond" type="file" data-allow-revert="true"
+                        <input name="filepond" id="lwImageMediaFilepond" type="file" data-allow-revert="true"
                             data-label-idle="{{ __tr('Select Image') }}" class="lw-file-uploader" data-instant-upload="true"
-                            data-action="<?= route('media.upload_temp_media', 'whatsapp_image') ?>" id="lwImageField" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_image') ?>' />
+                            data-action="<?= route('media.upload_temp_media', 'whatsapp_image') ?>" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_image') ?>' />
                     </div>
                     {{-- video --}}
                     <div x-show="headerType == 'video'" class="form-group col-sm-12">
-                        <input id="lwVideoMediaFilepond" type="file" data-allow-revert="true"
+                        <input name="filepond" id="lwVideoMediaFilepond" type="file" data-allow-revert="true"
                             data-label-idle="{{ __tr('Select Video') }}" class="lw-file-uploader" data-instant-upload="true"
-                            data-action="<?= route('media.upload_temp_media', 'whatsapp_video') ?>" id="lwVideoField" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_video') ?>' />
+                            data-action="<?= route('media.upload_temp_media', 'whatsapp_video') ?>" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_video') ?>' />
                         </div>
                     {{-- audio --}}
                         <div x-show="headerType == 'audio'" class="form-group col-sm-12">
-                        <input id="lwAudioMediaFilepond" type="file" data-allow-revert="true"
+                        <input name="filepond" id="lwAudioMediaFilepond" type="file" data-allow-revert="true"
                             data-label-idle="{{ __tr('Select Audio') }}" class="lw-file-uploader" data-instant-upload="true"
-                            data-action="<?= route('media.upload_temp_media', 'whatsapp_audio') ?>" id="lwAudioField" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_audio') ?>' />
+                            data-action="<?= route('media.upload_temp_media', 'whatsapp_audio') ?>" data-file-input-element="#lwMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_audio') ?>' />
                         </div>
                     </div>
                             <input id="lwMediaFileName" type="hidden" value="" name="uploaded_media_file_name" />
@@ -525,27 +525,27 @@
                 <div class="my-3">
                     {{-- document --}}
                     <div x-show="headerType == 'document'" class="form-group col-sm-12">
-                    <input id="lwDocumentMediaFilepond" type="file" data-allow-revert="true"
+                    <input name="filepond" id="lwDocumentMediaFilepond" type="file" data-allow-revert="true"
                         data-label-idle="{{ __tr('Select Document') }}" class="lw-file-uploader" data-instant-upload="true"
-                        data-action="<?= route('media.upload_temp_media', 'whatsapp_document') ?>" id="lwDocumentField" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_document') ?>' />
+                        data-action="<?= route('media.upload_temp_media', 'whatsapp_document') ?>" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_document') ?>' />
                     </div>
                     {{-- image --}}
                     <div x-show="headerType == 'image'" class="form-group col-sm-12">
-                    <input id="lwImageMediaFilepond" type="file" data-allow-revert="true"
+                    <input name="filepond" id="lwImageMediaFilepond" type="file" data-allow-revert="true"
                         data-label-idle="{{ __tr('Select Image') }}" class="lw-file-uploader" data-instant-upload="true"
-                        data-action="<?= route('media.upload_temp_media', 'whatsapp_image') ?>" id="lwImageField" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_image') ?>' />
+                        data-action="<?= route('media.upload_temp_media', 'whatsapp_image') ?>" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_image') ?>' />
                     </div>
                     {{-- video --}}
                     <div x-show="headerType == 'video'" class="form-group col-sm-12">
-                    <input id="lwVideoMediaFilepond" type="file" data-allow-revert="true"
+                    <input name="filepond" id="lwVideoMediaFilepond" type="file" data-allow-revert="true"
                         data-label-idle="{{ __tr('Select Video') }}" class="lw-file-uploader" data-instant-upload="true"
-                        data-action="<?= route('media.upload_temp_media', 'whatsapp_video') ?>" id="lwVideoField" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_video') ?>' />
+                        data-action="<?= route('media.upload_temp_media', 'whatsapp_video') ?>" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_video') ?>' />
                     </div>
                     {{-- audio --}}
                     <div x-show="headerType == 'audio'" class="form-group col-sm-12">
-                    <input id="lwAudioMediaFilepond" type="file" data-allow-revert="true"
+                    <input name="filepond" id="lwAudioMediaFilepond" type="file" data-allow-revert="true"
                         data-label-idle="{{ __tr('Select Audio') }}" class="lw-file-uploader" data-instant-upload="true"
-                        data-action="<?= route('media.upload_temp_media', 'whatsapp_audio') ?>" id="lwAudioField" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_audio') ?>' />
+                        data-action="<?= route('media.upload_temp_media', 'whatsapp_audio') ?>" data-file-input-element="#lwUpdateMediaFileName" data-allowed-media='<?= getMediaRestriction('whatsapp_audio') ?>' />
                     </div>
                 </div>
                 <input id="lwUpdateMediaFileName" type="hidden" value="" name="uploaded_media_file_name" />

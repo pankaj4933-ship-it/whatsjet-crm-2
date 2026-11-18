@@ -72,8 +72,22 @@ class MediaController extends BaseController
      *---------------------------------------------------------------- */
     public function uploadTempMedia(Request $request, $uploadItem = 'all')
     {
+        $input = $request->all();
+        if ($request->hasFile('filepond')) {
+            $input['filepond'] = $request->file('filepond');
+        } elseif (!empty($request->allFiles())) {
+            $allFiles = $request->allFiles();
+            $firstFile = reset($allFiles);
+            if (is_array($firstFile)) {
+                $firstFile = reset($firstFile);
+            }
+            if ($firstFile instanceof \Illuminate\Http\UploadedFile) {
+                $input['filepond'] = $firstFile;
+            }
+        }
+
         $processReaction = $this->mediaEngine
-            ->processUploadTempMedia($request->all(), $uploadItem);
+            ->processUploadTempMedia($input, $uploadItem);
 
         return $this->processResponse($processReaction, [], [], true, $processReaction->success() ? 200 : 406);
     }

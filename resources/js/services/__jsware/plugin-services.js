@@ -222,6 +222,7 @@
                         removeAllMediaAfterUpload = $this.data('remove-all-media'),
                         allowedMediaExtension = $this.data('allowed-media'),
                         filePondAdditionalOptions = _.assign({
+                            name: 'filepond',
                             maxParallelUploads: 10,
                             imagePreviewMaxHeight: 175,
                             labelIdle: $this.data('label-idle') ? $this.data('label-idle') : __Utils.getTranslation('uploader_default_text'),

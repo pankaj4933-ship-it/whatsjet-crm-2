@@ -67,7 +67,55 @@ class BaseMediaEngine extends BaseEngine
             $tempFolderPath = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
             $this->deleteOldFiles($tempFolderPath);
 
-            $file = $input['filepond'];
+            $file = $input['filepond'] ?? null;
+
+            if (!($file instanceof UploadedFile)) {
+                if (request()->hasFile('filepond')) {
+                    $file = request()->file('filepond');
+                } elseif (!empty(request()->allFiles())) {
+                    $allFiles = request()->allFiles();
+                    $firstFile = reset($allFiles);
+                    if (is_array($firstFile)) {
+                        $firstFile = reset($firstFile);
+                    }
+                    if ($firstFile instanceof UploadedFile) {
+                        $file = $firstFile;
+                    }
+                }
+            }
+
+            if (is_string($file)) {
+                $decoded = json_decode($file, true);
+                if (is_array($decoded) && isset($decoded['data'])) {
+                    $fileData = $decoded['data'];
+                    $originalName = $decoded['name'] ?? ('upload-'.uniqid().'.jpg');
+                    if (str_contains($fileData, 'base64,')) {
+                        $fileData = explode('base64,', $fileData)[1];
+                    }
+                    $tempPath = tempnam(sys_get_temp_dir(), 'filepond_');
+                    file_put_contents($tempPath, base64_decode($fileData));
+                    $file = new UploadedFile($tempPath, $originalName, $decoded['type'] ?? null, null, true);
+                } elseif (str_starts_with($file, 'data:') && str_contains($file, 'base64,')) {
+                    $parts = explode('base64,', $file);
+                    $tempPath = tempnam(sys_get_temp_dir(), 'filepond_');
+                    file_put_contents($tempPath, base64_decode($parts[1]));
+                    $file = new UploadedFile($tempPath, 'upload-'.uniqid().'.jpg', null, null, true);
+                } elseif (is_file($file)) {
+                    $file = $this->uploadedFileInstance($file);
+                } else {
+                    $this->disk = YesFileStorage::on('public-media-storage');
+                    $userTempPath = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
+                    $filePath = $userTempPath.DIRECTORY_SEPARATOR.$file;
+                    if ($this->disk->isExists($filePath)) {
+                        $file = $this->uploadedFileInstance($this->disk->getStoragePath($filePath));
+                    }
+                    $this->disk = YesFileStorage::on($this->currentDisk);
+                }
+            }
+
+            if (!($file instanceof UploadedFile)) {
+                return $this->engineFailedResponse(['show_message' => true], __tr('Uploaded file does not exists or is invalid.'));
+            }
 
             $fileOriginalName = $file->getClientOriginalName();
             $fileExtension = $file->getClientOriginalExtension();

@@ -71,6 +71,7 @@
                     removeAllMediaAfterUpload = $this.data('remove-all-media'),
                     allowedMediaExtension = $this.data('allowed-media'),
                     filePondAdditionalOptions = {
+                        name: 'filepond',
                         allowVideoPreview: false,
                         allowImagePreview: false,
                         maxParallelUploads: 10,
