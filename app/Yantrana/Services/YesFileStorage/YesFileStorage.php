@@ -200,6 +200,10 @@ class YesFileStorage // extends Filesystem
             return $this->storageInstance->putFile($path, $file, $options);
         }
 
+        if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
+            $file = public_path($file);
+        }
+
         return $this->storageInstance->putFile($path, new File($file), $options);
     }
 
@@ -218,6 +222,10 @@ class YesFileStorage // extends Filesystem
         // uploaded files
         if ($file instanceof UploadedFile or $file instanceof File) {
             return $this->storageInstance->putFileAs($path, $file, $name, $options);
+        }
+
+        if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
+            $file = public_path($file);
         }
 
         return $this->storageInstance->putFileAs($path, new File($file), $name, $options);

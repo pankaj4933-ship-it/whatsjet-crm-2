@@ -438,13 +438,17 @@ class BaseMediaEngine extends BaseEngine
     {
         $path = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
 
-        // create path to thumbnail
-        $localFileDestination = $path.'/'.$fileName;
-        $fileMimeType = File::mimeType($localFileDestination);
+        // create path to thumbnail (resolve to absolute public_path if available)
+        $localFileDestination = public_path($path.'/'.$fileName);
+        if (!File::exists($localFileDestination) && File::exists($path.'/'.$fileName)) {
+            $localFileDestination = $path.'/'.$fileName;
+        }
+
+        $fileMimeType = File::exists($localFileDestination) ? File::mimeType($localFileDestination) : 'image/jpeg';
         $options = array_merge([
             'resize' => null,
         ], $options);
-        if ($options['resize']) {
+        if ($options['resize'] && File::exists($localFileDestination)) {
 
             // open an image file
             $thumbnail = ImageIntervention::make($localFileDestination);
@@ -472,22 +476,25 @@ class BaseMediaEngine extends BaseEngine
         }
 
         if ($this->disk->storeFileAs($destinationPath, $localFileDestination, $fileName)) {
-            if ($this->disk->setFileAccessType($destinationPath.DIRECTORY_SEPARATOR.$fileName, 'public')) {
-
-                // Delete file from local server
-                if (File::exists($localFileDestination)) {
-                    File::delete($localFileDestination);
-                }
-
-                // return file preview url and file name
-                return $this->engineSuccessResponse([
-                    'path' => getMediaUrl($destinationPath, $fileName),
-                    'fileName' => $fileName,
-                    'visibility' => $destinationPath.DIRECTORY_SEPARATOR.$fileName,
-                    'filePath' => $destinationPath.DIRECTORY_SEPARATOR.$fileName,
-                    'fileMimeType' => $fileMimeType,
-                ], __tr('File Uploaded successfully.'));
+            try {
+                $this->disk->setFileAccessType($destinationPath.DIRECTORY_SEPARATOR.$fileName, 'public');
+            } catch (\Throwable $e) {
+                // S3-compatible providers (Supabase) handle ACL at bucket level
             }
+
+            // Delete file from local server
+            if (File::exists($localFileDestination)) {
+                File::delete($localFileDestination);
+            }
+
+            // return file preview url and file name
+            return $this->engineSuccessResponse([
+                'path' => getMediaUrl($destinationPath, $fileName),
+                'fileName' => $fileName,
+                'visibility' => $destinationPath.DIRECTORY_SEPARATOR.$fileName,
+                'filePath' => $destinationPath.DIRECTORY_SEPARATOR.$fileName,
+                'fileMimeType' => $fileMimeType,
+            ], __tr('File Uploaded successfully.'));
         }
 
         return $this->engineFailedResponse([], __tr('Something went wrong while moving the file.'));
