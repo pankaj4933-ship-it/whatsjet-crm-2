@@ -196,6 +196,35 @@ class YesFileStorage // extends Filesystem
             return $this->storeFileAs(str_replace('/'.$lastItemOfPath, '', $path), $file, $lastItemOfPath, $options);
         }
 
+        if (!isset($options['ContentType']) && !isset($options['mimetype'])) {
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (!$ext && is_object($file) && method_exists($file, 'getClientOriginalExtension')) {
+                $ext = strtolower($file->getClientOriginalExtension());
+            }
+            $mimeMap = [
+                'ogg' => 'audio/ogg',
+                'oga' => 'audio/ogg',
+                'opus' => 'audio/ogg',
+                'mp3' => 'audio/mpeg',
+                'm4a' => 'audio/mp4',
+                'aac' => 'audio/aac',
+                'amr' => 'audio/amr',
+                'wav' => 'audio/wav',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'webp' => 'image/webp',
+                'gif' => 'image/gif',
+                'mp4' => 'video/mp4',
+                '3gp' => 'video/3gp',
+                'pdf' => 'application/pdf',
+            ];
+            if (isset($mimeMap[$ext])) {
+                $options['ContentType'] = $mimeMap[$ext];
+                $options['mimetype'] = $mimeMap[$ext];
+            }
+        }
+
         $result = false;
         try {
             if ($file instanceof UploadedFile or $file instanceof File) {
@@ -239,6 +268,31 @@ class YesFileStorage // extends Filesystem
     public function storeFileAs($path, $file, $name, $options = [])
     {
         $path = trim($path, '/');
+        $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+        $mimeMap = [
+            'ogg' => 'audio/ogg',
+            'oga' => 'audio/ogg',
+            'opus' => 'audio/ogg',
+            'mp3' => 'audio/mpeg',
+            'm4a' => 'audio/mp4',
+            'aac' => 'audio/aac',
+            'amr' => 'audio/amr',
+            'wav' => 'audio/wav',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'mp4' => 'video/mp4',
+            '3gp' => 'video/3gp',
+            'pdf' => 'application/pdf',
+        ];
+        if (!isset($options['ContentType']) && !isset($options['mimetype'])) {
+            if (isset($mimeMap[$ext])) {
+                $options['ContentType'] = $mimeMap[$ext];
+                $options['mimetype'] = $mimeMap[$ext];
+            }
+        }
         $result = false;
         try {
             // uploaded files

@@ -6,7 +6,7 @@
                 <video class="lw-whatsapp-header-video" controls src="{{ $mediaValues['link'] }}"></video>
                 @elseif ($mediaValues['type'] == 'audio')
                 <audio class="lw-whatsapp-header-audio my-auto mx-4" controls>
-                    <source src="{{ $mediaValues['link'] }}" type="{{ $mediaValues['mime_type'] ?? null }}">
+                    <source src="{{ $mediaValues['link'] }}" type="{{ $mediaValues['mime_type'] ?: 'audio/ogg' }}">
                   {{  __tr('Your browser does not support the audio element.') }}
                   </audio>
                 @elseif (in_array($mediaValues['type'], ['image', 'sticker']))

@@ -1108,7 +1108,10 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
                     if(!isset($mediaData['link']) or !isset($mediaData['type'])) {
                         return $this->engineFailedResponse([], __tr('Failed to process media data, please try again.'));
                     }
-                    return $this->whatsAppApiService->sendMediaMessage($poolRequestItem['phoneNumber'], $mediaData['type'], $mediaData['link'], ($isDemo ? "{$serviceName} DEMO - " . $mediaData['caption'] : '' . $mediaData['caption']), $mediaData['original_filename'], $poolRequestItem['vendorId'], [
+                    $mediaLinkPayload = !empty($mediaData['media_id'])
+                        ? ['id' => $mediaData['media_id'], 'link' => $mediaData['link']]
+                        : (is_string($mediaData['link']) ? str_replace(' ', '%20', $mediaData['link']) : $mediaData['link']);
+                    return $this->whatsAppApiService->sendMediaMessage($poolRequestItem['phoneNumber'], $mediaData['type'], $mediaLinkPayload, ($isDemo ? "{$serviceName} DEMO - " . $mediaData['caption'] : '' . $mediaData['caption']), $mediaData['original_filename'], $poolRequestItem['vendorId'], [
                         'pool' => $pool,
                         'queueUid' => $poolRequestItem['queueUid'],
                         'business_scope_user_id' => $businessScopeUserId
@@ -2697,13 +2700,36 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
             $fileUrl = $request->media_url ?? null;
             $fileOriginalName = $fileName;
         }
+        $ext = strtolower(pathinfo($fileName ?? '', PATHINFO_EXTENSION));
+        $knownMimes = [
+            'ogg' => 'audio/ogg',
+            'oga' => 'audio/ogg',
+            'opus' => 'audio/ogg',
+            'mp3' => 'audio/mpeg',
+            'm4a' => 'audio/mp4',
+            'aac' => 'audio/aac',
+            'amr' => 'audio/amr',
+            'wav' => 'audio/wav',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'mp4' => 'video/mp4',
+            '3gp' => 'video/3gp',
+            'pdf' => 'application/pdf',
+        ];
+        $detectedMime = Arr::get($rawUploadData, 'fileMimeType') ?: ($knownMimes[$ext] ?? null);
+        if ($fileUrl) {
+            $fileUrl = str_replace(' ', '%20', $fileUrl);
+        }
         return [
             'type' => $mediaType,
             'link' => $fileUrl,
             'media_id' => $mediaUploadedId ?? null,
             'media_id_expiry_at' => $isNewMediaId ? now()->addDays(29) : ($mediaMessageData['media_id_expiry_at'] ?? null), // media id expiry time
             'caption' => $caption,
-            'mime_type' => Arr::get($rawUploadData, 'fileMimeType'),
+            'mime_type' => $detectedMime,
             'file_name' => $fileName,
             'original_filename' => $fileOriginalName,
         ];
@@ -2873,7 +2899,10 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
             if(!isset($mediaData['link']) or !isset($mediaData['type'])) {
                 return $this->engineFailedResponse([], __tr('Failed to process media data, please try again.'));
             }
-            $sendMessageResult = $this->whatsAppApiService->sendMediaMessage($contact->wa_id, $mediaData['type'], $mediaData['link'], (isDemo() ? "{$serviceName} DEMO - " . $mediaData['caption'] : '' . $mediaData['caption']), $mediaData['original_filename'], $vendorId, [
+            $mediaLinkPayload = !empty($mediaData['media_id'])
+                ? ['id' => $mediaData['media_id'], 'link' => $mediaData['link']]
+                : (is_string($mediaData['link']) ? str_replace(' ', '%20', $mediaData['link']) : $mediaData['link']);
+            $sendMessageResult = $this->whatsAppApiService->sendMediaMessage($contact->wa_id, $mediaData['type'], $mediaLinkPayload, (isDemo() ? "{$serviceName} DEMO - " . $mediaData['caption'] : '' . $mediaData['caption']), $mediaData['original_filename'], $vendorId, [
                 'business_scope_user_id' => $businessScopeUserId
             ]);
             /*  $mediaData = [
