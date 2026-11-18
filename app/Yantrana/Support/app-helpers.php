@@ -897,9 +897,9 @@ if (! function_exists('getMediaUrl')) {
             $currentDisc = YesFileStorage::on($currentFileSystemDriver);
             // check if file is exists
             if (config("filesystems.disks.$currentFileSystemDriver.full_url")) {
-                return config("filesystems.disks.$currentFileSystemDriver.full_url", asset('/')) . $storagePath;
+                return rtrim(config("filesystems.disks.$currentFileSystemDriver.full_url", asset('/')), '/') . '/' . $storagePath;
             }
-            return config("filesystems.disks.$currentFileSystemDriver.url", asset('/')) . $storagePath;
+            return rtrim(config("filesystems.disks.$currentFileSystemDriver.url", asset('/')), '/') . '/' . $storagePath;
         }
 
         return null;

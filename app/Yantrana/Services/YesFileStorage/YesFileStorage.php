@@ -127,10 +127,19 @@ class YesFileStorage // extends Filesystem
     public function __call($func, $params)
     {
         if (array_key_exists($func, $this->mirrorMethods)) {
-            return call_user_func_array([
-                $this->storageInstance,
-                $this->mirrorMethods[$func],
-            ], $params);
+            try {
+                return call_user_func_array([
+                    $this->storageInstance,
+                    $this->mirrorMethods[$func],
+                ], $params);
+            } catch (\Throwable $e) {
+                // Gracefully ignore ACL errors on S3-compatible providers (Supabase, Cloudflare R2)
+                // where bucket visibility is controlled at the bucket level instead of object ACLs
+                if ($func === 'setFileAccessType') {
+                    return true;
+                }
+                throw $e;
+            }
         }
 
         $flipedMirrorMethods = array_flip($this->mirrorMethods);
