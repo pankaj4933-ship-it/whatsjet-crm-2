@@ -148,9 +148,13 @@ class BaseMediaEngine extends BaseEngine
             }
 
             // If not exists then folder then create
-            if ($this->disk->isExists($folderPath) === false) {
-                // create temp file folder
-                $this->disk->createFolder($folderPath);
+            try {
+                if ($this->disk->isExists($folderPath) === false) {
+                    // create temp file folder
+                    $this->disk->createFolder($folderPath);
+                }
+            } catch (\Throwable $e) {
+                // S3 / object storage does not require folder pre-creation
             }
 
             // Store file on destination
@@ -210,10 +214,13 @@ class BaseMediaEngine extends BaseEngine
             $sourcePath = $tempFolderPath.DIRECTORY_SEPARATOR.$fileName;
 
             // Check if media directory exist
-            if ($this->disk->isExists($destinationPath) === false) {
-
-                // create temp file folder
-                $this->disk->createFolder($destinationPath);
+            try {
+                if ($this->disk->isExists($destinationPath) === false) {
+                    // create temp file folder
+                    $this->disk->createFolder($destinationPath);
+                }
+            } catch (\Throwable $e) {
+                // S3 / object storage does not require folder pre-creation
             }
             $this->disk = YesFileStorage::on($this->currentDisk);
             // If source moved to destination
@@ -455,9 +462,13 @@ class BaseMediaEngine extends BaseEngine
             $thumbnail->save($localFileDestination);
         }
 
-        if ($this->disk->isExists($destinationPath) === false) {
-            // create temp file folder
-            $this->disk->createFolder($destinationPath);
+        try {
+            if ($this->disk->isExists($destinationPath) === false) {
+                // create temp file folder
+                $this->disk->createFolder($destinationPath);
+            }
+        } catch (\Throwable $e) {
+            // S3 / object storage does not require folder pre-creation
         }
 
         if ($this->disk->storeFileAs($destinationPath, $localFileDestination, $fileName)) {

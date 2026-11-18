@@ -139,6 +139,11 @@ class YesFileStorage // extends Filesystem
                 if ($func === 'setFileAccessType') {
                     return true;
                 }
+                // S3-compatible providers (Supabase, R2) throw UnableToCheckDirectoryExistence
+                // on directories because directories are virtual prefixes, not real objects
+                if ($func === 'isExists' || $func === 'createFolder') {
+                    return true;
+                }
                 throw $e;
             }
         }
