@@ -5,7 +5,7 @@
                 @if (($mediaValues['type'] ?? '') == 'video')
                 <video class="lw-whatsapp-header-video" controls src="{{ $mediaValues['link'] ?? '' }}"></video>
                 @elseif (($mediaValues['type'] ?? '') == 'audio')
-                <audio class="lw-whatsapp-header-audio my-auto mx-4" controls>
+                <audio class="lw-whatsapp-header-audio my-auto mx-4" controls preload="metadata">
                     <source src="{{ $mediaValues['link'] ?? '' }}" type="{{ Arr::get($mediaValues, 'mime_type') ?: 'audio/ogg' }}">
                   {{  __tr('Your browser does not support the audio element.') }}
                   </audio>

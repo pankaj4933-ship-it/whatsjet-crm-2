@@ -1104,7 +1104,7 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
 
                 if ($mediaMessageData) {
                     // process media
-                    $mediaData = $this->processMediaData($mediaMessageData);
+                    $mediaData = $this->processMediaData($mediaMessageData, null, $poolRequestItem['vendorId'] ?? null);
                     if(!isset($mediaData['link']) or !isset($mediaData['type'])) {
                         return $this->engineFailedResponse([], __tr('Failed to process media data, please try again.'));
                     }

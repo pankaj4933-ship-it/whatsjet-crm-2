@@ -477,10 +477,10 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
         }
         $typeDetails = [];
         if (is_array($mediaLink)) {
-            if (isset($mediaLink['id'])) {
+            if (!empty($mediaLink['id'])) {
                 $typeDetails['id'] = $mediaLink['id'];
             } else {
-                $typeDetails['link'] = $mediaLink['link'];
+                $typeDetails['link'] = $mediaLink['link'] ?? '';
             }
         } else {
             $typeDetails['link'] = $mediaLink;
@@ -727,151 +727,172 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
      * @link https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media/#upload-media
      *
      * @param  string  $file  - file local path or url
+     * @param  string  $file
      * @param  string|null  $mimeType  - required if provided file is url based
-     * @return array
+     * @param  int|null  $vendorId
+     * @return string|null
      */
     public function uploadMedia(string $file, ?string $mimeType = null, $vendorId = null)
     {
         if ($vendorId) {
             $this->vendorId = $vendorId;
         }
-        $tempLocalFile = null;
+
         try {
+            $fileContents = null;
+            $filename = 'media_file';
+            $ext = null;
+
             if (Str::startsWith($file, 'http')) {
-                if (!$mimeType) {
-                    $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
-                    $knownMimes = [
-                        'ogg' => 'audio/ogg',
-                        'oga' => 'audio/ogg',
-                        'opus' => 'audio/ogg',
-                        'mp3' => 'audio/mpeg',
-                        'm4a' => 'audio/mp4',
-                        'aac' => 'audio/aac',
-                        'amr' => 'audio/amr',
-                        'wav' => 'audio/wav',
-                        'jpg' => 'image/jpeg',
-                        'jpeg' => 'image/jpeg',
-                        'png' => 'image/png',
-                        'webp' => 'image/webp',
-                        'gif' => 'image/gif',
-                        'mp4' => 'video/mp4',
-                        '3gp' => 'video/3gp',
-                        'pdf' => 'application/pdf',
-                    ];
-                    $mimeType = $knownMimes[$ext] ?? 'audio/ogg';
+                $parsedPath = parse_url($file, PHP_URL_PATH);
+                $ext = strtolower(pathinfo($parsedPath, PATHINFO_EXTENSION));
+                $filename = basename($parsedPath) ?: ('media.' . ($ext ?: 'ogg'));
+
+                $mimeMap = [
+                    'ogg' => 'audio/ogg',
+                    'oga' => 'audio/ogg',
+                    'opus' => 'audio/ogg',
+                    'mp3' => 'audio/mpeg',
+                    'm4a' => 'audio/mp4',
+                    'aac' => 'audio/aac',
+                    'amr' => 'audio/amr',
+                    'wav' => 'audio/wav',
+                    'jpg' => 'image/jpeg',
+                    'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'webp' => 'image/webp',
+                    'gif' => 'image/gif',
+                    'mp4' => 'video/mp4',
+                    '3gp' => 'video/3gp',
+                    'pdf' => 'application/pdf',
+                ];
+
+                if (!$mimeType && isset($mimeMap[$ext])) {
+                    $mimeType = $mimeMap[$ext];
                 }
 
-                // 1. Try reading directly from S3 or local disk storage first
-                $fileContents = null;
+                // 1. Check local disk for file
                 $bucketName = env('AWS_BUCKET') ? trim(env('AWS_BUCKET')) : 'adscale-media';
-                if (str_contains($file, '/' . $bucketName . '/')) {
-                    $s3Key = explode('/' . $bucketName . '/', $file, 2)[1] ?? null;
-                    if ($s3Key) {
-                        $s3Key = ltrim(urldecode($s3Key), '/');
-                        try {
-                            if (Storage::disk('s3')->exists($s3Key)) {
-                                $fileContents = Storage::disk('s3')->get($s3Key);
-                            }
-                        } catch (\Throwable $e) {}
-                        if (!$fileContents) {
-                            try {
-                                if (Storage::disk('public-media-storage')->exists($s3Key)) {
-                                    $fileContents = Storage::disk('public-media-storage')->get($s3Key);
-                                }
-                            } catch (\Throwable $e) {}
-                        }
-                    }
+                $cleanPath = ltrim($parsedPath, '/');
+                $bucketPrefix = "storage/v1/object/public/{$bucketName}/";
+                if (str_starts_with($cleanPath, $bucketPrefix)) {
+                    $cleanPath = substr($cleanPath, strlen($bucketPrefix));
                 }
 
-                // 2. Fall back to cURL download with User-Agent and redirects
+                if (file_exists(public_path($cleanPath))) {
+                    $fileContents = file_get_contents(public_path($cleanPath));
+                }
+
+                // 2. Fetch directly from S3 disk
                 if (!$fileContents) {
-                    $chDownload = curl_init($file);
-                    curl_setopt($chDownload, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($chDownload, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($chDownload, CURLOPT_TIMEOUT, 30);
-                    curl_setopt($chDownload, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($chDownload, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($chDownload, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
-                    $fileContents = curl_exec($chDownload);
-                    curl_close($chDownload);
+                    try {
+                        if (\Illuminate\Support\Facades\Storage::disk('s3')->exists($cleanPath)) {
+                            $fileContents = \Illuminate\Support\Facades\Storage::disk('s3')->get($cleanPath);
+                        }
+                    } catch (\Throwable $e) {}
                 }
 
-                if ($fileContents && strlen($fileContents) > 0) {
-                    $tempLocalFile = tempnam(sys_get_temp_dir(), 'wa_upload_');
-                    file_put_contents($tempLocalFile, $fileContents);
-                    $file = $tempLocalFile;
-                } else {
-                    return null;
+                // 3. Fetch from public-media-storage disk
+                if (!$fileContents) {
+                    try {
+                        if (\Illuminate\Support\Facades\Storage::disk('public-media-storage')->exists($cleanPath)) {
+                            $fileContents = \Illuminate\Support\Facades\Storage::disk('public-media-storage')->get($cleanPath);
+                        }
+                    } catch (\Throwable $e) {}
+                }
+
+                // 4. Fallback to HTTP GET
+                if (!$fileContents) {
+                    try {
+                        $downloadResponse = Http::timeout(30)->withoutVerifying()->get($file);
+                        if ($downloadResponse->successful() && strlen($downloadResponse->body()) > 0) {
+                            $fileContents = $downloadResponse->body();
+                        }
+                    } catch (\Throwable $e) {}
                 }
             } else {
-                if (!file_exists($file)) {
-                    $candidates = [
-                        public_path($file),
-                        storage_path('app/' . $file),
-                    ];
-                    foreach ($candidates as $cand) {
-                        if (file_exists($cand)) {
-                            $file = $cand;
-                            break;
-                        }
-                    }
+                $filePath = $file;
+                if (!file_exists($filePath) && file_exists(public_path($filePath))) {
+                    $filePath = public_path($filePath);
                 }
-                if (!$mimeType && file_exists($file)) {
-                    $mimeType = mime_content_type($file);
+                if (file_exists($filePath)) {
+                    $fileContents = file_get_contents($filePath);
+                    $filename = basename($filePath);
+                    $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
                 }
             }
 
-            if (!file_exists($file) || filesize($file) === 0) {
+            if (!$fileContents || strlen($fileContents) === 0) {
+                \Illuminate\Support\Facades\Log::warning("WhatsApp uploadMedia: empty file contents for {$file}");
                 return null;
+            }
+
+            if (!$ext) {
+                $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            }
+            if (!$ext) {
+                $ext = match ($mimeType) {
+                    'audio/ogg' => 'ogg',
+                    'audio/mpeg' => 'mp3',
+                    'audio/mp4' => 'm4a',
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'video/mp4' => 'mp4',
+                    'application/pdf' => 'pdf',
+                    default => 'bin',
+                };
+                $filename .= '.' . $ext;
+            }
+
+            if (!$mimeType) {
+                $mimeType = match ($ext) {
+                    'ogg', 'oga', 'opus' => 'audio/ogg',
+                    'mp3' => 'audio/mpeg',
+                    'm4a' => 'audio/mp4',
+                    'aac' => 'audio/aac',
+                    'amr' => 'audio/amr',
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'png' => 'image/png',
+                    'webp' => 'image/webp',
+                    'mp4' => 'video/mp4',
+                    'pdf' => 'application/pdf',
+                    default => 'application/octet-stream',
+                };
             }
 
             $currentPhoneNumberId = $this->getServiceConfiguration('current_phone_number_id');
             $accessToken = $this->getServiceConfiguration('whatsapp_access_token');
             if (!$currentPhoneNumberId || !$accessToken) {
-                \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia missing config: phone_id=' . $currentPhoneNumberId . ', token=' . ($accessToken ? 'set' : 'missing'));
+                \Illuminate\Support\Facades\Log::warning("WhatsApp uploadMedia missing config: phone_id={$currentPhoneNumberId}, token=" . ($accessToken ? 'set' : 'missing'));
                 return null;
             }
 
-            $ch = curl_init();
-            $url = $this->baseApiRequestEndpoint . $currentPhoneNumberId . '/media';
-            $data = [
-                'file' => new \CURLFile($file, $mimeType),
-                'type' => $mimeType,
-                'messaging_product' => 'whatsapp',
-            ];
-            $headers = [];
-            $headers[] = 'Authorization: Bearer ' . $accessToken;
-            $headers[] = 'Content-type: multipart/form-data';
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            $result = curl_exec($ch);
-            if ($result === false) {
-                $result = curl_error($ch) . ' - ' . curl_errno($ch);
-            } else {
-                $resultDecode = json_decode($result, true);
-                if ($resultDecode) {
-                    $result = $resultDecode;
-                    if (! isset($result['error'])) {
-                        return $result['id'] ?? null;
-                    } else {
-                        \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia Meta API error: ' . json_encode($result['error']));
-                        return null;
-                    }
-                }
+            $url = rtrim($this->baseApiRequestEndpoint, '/') . '/' . $currentPhoneNumberId . '/media';
 
-                return $result['id'] ?? null;
+            $uploadResponse = Http::withToken($accessToken)
+                ->timeout(60)
+                ->withoutVerifying()
+                ->attach('file', $fileContents, $filename, [
+                    'Content-Type' => $mimeType,
+                ])
+                ->post($url, [
+                    'type' => $mimeType,
+                    'messaging_product' => 'whatsapp',
+                ]);
+
+            if ($uploadResponse->successful()) {
+                $mediaId = $uploadResponse->json('id');
+                if ($mediaId) {
+                    \Illuminate\Support\Facades\Log::info("WhatsApp uploadMedia SUCCESS: media_id={$mediaId} for file {$filename}");
+                    return $mediaId;
+                }
             }
-            curl_close($ch);
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia error: ' . $e->getMessage());
+
+            \Illuminate\Support\Facades\Log::error('WhatsApp uploadMedia Meta API error: ' . $uploadResponse->body());
             return null;
-        } finally {
-            if ($tempLocalFile && file_exists($tempLocalFile)) {
-                @unlink($tempLocalFile);
-            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('WhatsApp uploadMedia exception: ' . $e->getMessage());
+            return null;
         }
     }
     /**

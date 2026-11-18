@@ -245,32 +245,17 @@ class YesFileStorage // extends Filesystem
 
             if ($rawContent !== null && strlen($rawContent) > 0) {
                 $result = $this->storageInstance->put($path, $rawContent, $options);
-            } elseif ($file instanceof UploadedFile or $file instanceof File) {
-                $result = $this->storageInstance->putFile($path, $file, $options);
+                // Also ensure a local copy is saved so Chrome/browser streaming never fails
+                try {
+                    Storage::disk('public-media-storage')->put($path, $rawContent, $options);
+                } catch (\Throwable $e) {}
             } else {
-                if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
-                    $file = public_path($file);
-                }
-                $result = $this->storageInstance->putFile($path, new File($file), $options);
+                \Illuminate\Support\Facades\Log::warning('storeFile: rawContent is empty, skipping 0-byte upload', ['path' => $path]);
+                $result = false;
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('storeFile error: ' . $e->getMessage(), ['path' => $path]);
             $result = false;
-        }
-
-        if (!$result) {
-            try {
-                $localDisk = Storage::disk('public-media-storage');
-                if ($rawContent !== null && strlen($rawContent) > 0) {
-                    $result = $localDisk->put($path, $rawContent, $options);
-                } elseif ($file instanceof UploadedFile or $file instanceof File) {
-                    $result = $localDisk->putFile($path, $file, $options);
-                } else {
-                    $result = $localDisk->putFile($path, new File($file), $options);
-                }
-            } catch (\Throwable $localEx) {
-                \Illuminate\Support\Facades\Log::error('storeFile fallback error: ' . $localEx->getMessage());
-            }
         }
 
         return $result;
@@ -334,13 +319,17 @@ class YesFileStorage // extends Filesystem
 
             if ($rawContent !== null && strlen($rawContent) > 0) {
                 $result = $this->storageInstance->put($targetKey, $rawContent, $options);
-            } elseif ($file instanceof UploadedFile or $file instanceof File) {
-                $result = $this->storageInstance->putFileAs($path, $file, $name, $options);
+                // Also ensure a local copy is saved so Chrome/browser streaming never fails
+                try {
+                    Storage::disk('public-media-storage')->put($targetKey, $rawContent, $options);
+                } catch (\Throwable $e) {}
             } else {
-                if (is_string($file) && !file_exists($file) && file_exists(public_path($file))) {
-                    $file = public_path($file);
-                }
-                $result = $this->storageInstance->putFileAs($path, new File($file), $name, $options);
+                \Illuminate\Support\Facades\Log::warning('storeFileAs: rawContent is empty, skipping 0-byte upload', [
+                    'path' => $path,
+                    'name' => $name,
+                    'file' => is_string($file) ? $file : get_class($file),
+                ]);
+                $result = false;
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('storeFileAs error: ' . $e->getMessage(), [
@@ -349,22 +338,6 @@ class YesFileStorage // extends Filesystem
                 'file' => is_string($file) ? $file : get_class($file),
             ]);
             $result = false;
-        }
-
-        // If upload to primary disk failed or returned false, fall back to local public-media-storage
-        if (!$result) {
-            try {
-                $localDisk = Storage::disk('public-media-storage');
-                if ($rawContent !== null && strlen($rawContent) > 0) {
-                    $result = $localDisk->put($targetKey, $rawContent, $options);
-                } elseif ($file instanceof UploadedFile or $file instanceof File) {
-                    $result = $localDisk->putFileAs($path, $file, $name, $options);
-                } else {
-                    $result = $localDisk->putFileAs($path, new File($file), $name, $options);
-                }
-            } catch (\Throwable $localEx) {
-                \Illuminate\Support\Facades\Log::error('storeFileAs fallback error: ' . $localEx->getMessage());
-            }
         }
 
         return $result;

@@ -33,6 +33,7 @@ use App\Yantrana\Base\BaseEngine;
 use Illuminate\Database\Query\Builder;
 use App\Yantrana\Components\Media\MediaEngine;
 use App\Yantrana\Components\WhatsAppService\WhatsAppServiceEngine;
+use App\Yantrana\Components\WhatsAppService\Services\WhatsAppApiService;
 use App\Yantrana\Components\BotReply\Repositories\BotFlowRepository;
 use App\Yantrana\Components\BotReply\Repositories\BotReplyRepository;
 use App\Yantrana\Components\BotReply\Interfaces\BotReplyEngineInterface;
@@ -43,6 +44,11 @@ use App\Yantrana\Components\Contact\Repositories\LabelRepository;
 
 class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
 {
+    /**
+     * @var WhatsAppApiService - WhatsApp API Service
+     */
+    protected $whatsAppApiService;
+
     /**
      * @var  BotReplyRepository $botReplyRepository - BotReply Repository
      */
@@ -100,6 +106,7 @@ class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
         ContactCustomFieldRepository $contactCustomFieldRepository,
         MediaEngine $mediaEngine,
         WhatsAppServiceEngine $whatsAppServiceEngine,
+        WhatsAppApiService $whatsAppApiService,
         BotFlowRepository $botFlowRepository,
         ContactRepository $contactRepository,
         UserRepository $userRepository,
@@ -109,6 +116,7 @@ class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
         $this->contactCustomFieldRepository = $contactCustomFieldRepository;
         $this->mediaEngine = $mediaEngine;
         $this->whatsAppServiceEngine = $whatsAppServiceEngine;
+        $this->whatsAppApiService = $whatsAppApiService;
         $this->botFlowRepository = $botFlowRepository;
         $this->contactRepository = $contactRepository;
         $this->userRepository = $userRepository;
@@ -420,12 +428,20 @@ class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
             }
             $mediaLink = $isProcessed->data('path');
             $inputData['reply_text'] = '';
+
+            $mediaUploadedId = null;
+            try {
+                $mediaUploadedId = $this->whatsAppApiService->uploadMedia($mediaLink, $isProcessed->data('fileMimeType'), $vendorId);
+            } catch (\Throwable $e) {}
+
             $inputData['__data'] = [
                 'media_message' => [
                     'media_link' => $mediaLink,
                     'header_type' => $inputData['header_type'], // "text", "image", "audio or "video"
                     'caption' => $inputData['caption'] ?? '',
                     'file_name' => $isProcessed->data('fileName'),
+                    'media_id' => $mediaUploadedId,
+                    'media_id_expiry_at' => $mediaUploadedId ? now()->addDays(28) : null,
                 ]
             ];
         } elseif ($messageType == 'template') {
@@ -607,9 +623,16 @@ class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
                 $mediaLink = $isProcessed->data('path');
                 $inputData['reply_text'] = '';
 
+                $mediaUploadedId = null;
+                try {
+                    $mediaUploadedId = $this->whatsAppApiService->uploadMedia($mediaLink, $isProcessed->data('fileMimeType'), $vendorId);
+                } catch (\Throwable $e) {}
+
                 $mediaMessage['media_link'] = $mediaLink;
                 $mediaMessage['header_type'] = $inputData['header_type']; // "text", "image", "audio or "video"
                 $mediaMessage['file_name'] = $isProcessed->data('fileName');
+                $mediaMessage['media_id'] = $mediaUploadedId;
+                $mediaMessage['media_id_expiry_at'] = $mediaUploadedId ? now()->addDays(28) : null;
             }
 
             $updateData['__data'] = [

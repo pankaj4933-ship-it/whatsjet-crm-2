@@ -726,14 +726,14 @@ class BaseMediaEngine extends BaseEngine
         }
 
         if ($this->disk->storeFileAs($destinationPath, $localFileDestination, $fileName)) {
-            try {
-                $this->disk->setFileAccessType($destinationPath.DIRECTORY_SEPARATOR.$fileName, 'public');
-            } catch (\Throwable $e) {
-                // S3-compatible providers (Supabase) handle ACL at bucket level
+            // Keep a local copy in public media storage so Chrome and local players can always stream it
+            $localFinalPath = public_path($destinationPath . DIRECTORY_SEPARATOR . $fileName);
+            $localFinalDir = dirname($localFinalPath);
+            if (!File::isDirectory($localFinalDir)) {
+                File::makeDirectory($localFinalDir, 0777, true, true);
             }
-
-            // Delete file from local server
-            if (File::exists($localFileDestination)) {
+            if (File::exists($localFileDestination) && $localFileDestination !== $localFinalPath) {
+                File::copy($localFileDestination, $localFinalPath);
                 File::delete($localFileDestination);
             }
 
