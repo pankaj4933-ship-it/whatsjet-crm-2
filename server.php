@@ -16,4 +16,15 @@ if ($uri !== '/' && file_exists(__DIR__.'/public'.$uri)) {
     return false;
 }
 
+// Fast 404 for missing media storage and static assets to prevent booting Laravel
+if (
+    str_starts_with($uri, '/media-storage/') ||
+    preg_match('/\.(?:jpe?g|png|gif|ico|webp|svg|mp3|ogg|wav|mp4|webm|woff2?|ttf|eot)$/i', $uri)
+) {
+    http_response_code(404);
+    header('Content-Type: text/plain');
+    echo '404 Not Found';
+    exit;
+}
+
 require_once __DIR__.'/public/index.php';

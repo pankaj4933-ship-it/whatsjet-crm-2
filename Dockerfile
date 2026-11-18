@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     default-mysql-client \
     ca-certificates \
-    && install-php-extensions pdo_mysql mbstring exif pcntl bcmath gd zip intl gettext \
+    && install-php-extensions pdo_mysql mbstring exif pcntl bcmath gd zip intl gettext opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite for Laravel routes
@@ -39,6 +39,29 @@ ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf \
     && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
     && sed -ri -e 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf
+
+# Configure Apache MPM Prefork for low memory environments (Render Free 512MB RAM)
+# Caps max concurrent workers so Apache never exceeds container RAM limit
+RUN printf "<IfModule mpm_prefork_module>\n\
+    StartServers             2\n\
+    MinSpareServers          1\n\
+    MaxSpareServers          3\n\
+    MaxRequestWorkers        6\n\
+    MaxConnectionsPerChild 500\n\
+</IfModule>\n" > /etc/apache2/mods-available/mpm_prefork.conf
+
+# Configure PHP settings (memory limit and OPcache to reduce RAM usage and speed up responses)
+RUN printf "memory_limit = 128M\n\
+upload_max_filesize = 64M\n\
+post_max_size = 64M\n\
+max_execution_time = 60\n\
+opcache.enable = 1\n\
+opcache.enable_cli = 0\n\
+opcache.memory_consumption = 32\n\
+opcache.interned_strings_buffer = 8\n\
+opcache.max_accelerated_files = 10000\n\
+opcache.validate_timestamps = 0\n\
+opcache.save_comments = 1\n" > /usr/local/etc/php/conf.d/docker-php-custom.ini
 
 # Setup startup entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
