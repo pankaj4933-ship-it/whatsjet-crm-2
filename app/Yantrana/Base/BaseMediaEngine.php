@@ -385,64 +385,122 @@ class BaseMediaEngine extends BaseEngine
             ];
         }
         // if request file not found it will throw error.
-        if (! array_has($input, 'filepond') && __isEmpty($input['filepond'])) {
-            return $this->engineFailedResponse(['show_message' => true], __tr('Uploaded file does not exists'));
+        if ((! array_has($input, 'filepond') || __isEmpty($input['filepond'])) && !request()->hasFile('filepond')) {
+            if (request()->filled('uploaded_media_file_name')) {
+                $input['filepond'] = request('uploaded_media_file_name');
+            } elseif (request()->filled('filepond')) {
+                $input['filepond'] = request('filepond');
+            } else {
+                return $this->engineFailedResponse(['show_message' => true], __tr('Uploaded file does not exists'));
+            }
         }
 
-        $uploadedFile = $input['filepond'];
+        $uploadedFile = $input['filepond'] ?? (request()->file('filepond') ?? request('uploaded_media_file_name'));
 
         if (is_string($uploadedFile)) {
-            $this->disk = YesFileStorage::on('public-media-storage');
-            $path = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
-            $filePath = $path.DIRECTORY_SEPARATOR.$uploadedFile;
+            $uploadedFile = trim($uploadedFile);
 
-            $fileExists = false;
-            try {
-                $fileExists = $this->disk->isExists($filePath);
-            } catch (\Throwable $e) {
-                $fileExists = false;
-            }
-
-            if (!$fileExists && file_exists(public_path($filePath))) {
-                $fileExists = true;
-            }
-
-            // If not found locally (e.g. Render redeployed or restarted container),
-            // restore the temp file from S3 bucket!
-            if (!$fileExists && $this->currentDisk !== 'public-media-storage') {
-                try {
-                    $cloudDisk = YesFileStorage::on($this->currentDisk);
-                    if ($cloudDisk->isExists($filePath)) {
-                        $fileContents = $cloudDisk->getFileIfExists($filePath);
-                        if ($fileContents) {
-                            $localDir = public_path($path);
-                            if (!File::isDirectory($localDir)) {
-                                File::makeDirectory($localDir, 0777, true, true);
-                            }
-                            file_put_contents(public_path($filePath), $fileContents);
-                            $fileExists = true;
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    $fileExists = false;
+            // If JSON string was sent by FilePond or JS client, decode it to get fileName
+            if (str_starts_with($uploadedFile, '{') && str_ends_with($uploadedFile, '}')) {
+                $decoded = json_decode($uploadedFile, true);
+                if (is_array($decoded)) {
+                    $uploadedFile = $decoded['fileName'] ?? $decoded['data']['fileName'] ?? $decoded['name'] ?? $uploadedFile;
                 }
             }
 
-            if (! $fileExists) {
+            // If full URL or relative path was passed, strip down to the basename
+            if (str_contains($uploadedFile, '/')) {
+                $parsedPath = parse_url($uploadedFile, PHP_URL_PATH);
+                $uploadedFile = basename($parsedPath ?: $uploadedFile);
+            }
+
+            $userTempPath = getPathByKey('user_temp_uploads', ['{_uid}' => authUID()]);
+            $vendorTempPath = getPathByKey('user_temp_uploads', ['{_uid}' => getVendorUid()]);
+
+            // Candidate paths where the temp file could be stored locally
+            $candidatePaths = array_unique([
+                public_path($userTempPath . DIRECTORY_SEPARATOR . $uploadedFile),
+                public_path($vendorTempPath . DIRECTORY_SEPARATOR . $uploadedFile),
+                public_path('media-storage/users-temp-uploads' . DIRECTORY_SEPARATOR . $uploadedFile),
+                public_path($uploadedFile),
+                storage_path('app/' . $userTempPath . DIRECTORY_SEPARATOR . $uploadedFile),
+            ]);
+
+            $resolvedLocalPath = null;
+            foreach ($candidatePaths as $candidate) {
+                if (file_exists($candidate) && is_file($candidate)) {
+                    $resolvedLocalPath = $candidate;
+                    break;
+                }
+            }
+
+            // If still not found, search with glob in users-temp-uploads directory
+            if (!$resolvedLocalPath) {
+                $globMatches = glob(public_path('media-storage/users-temp-uploads/*/*/' . $uploadedFile));
+                if (!empty($globMatches) && is_file($globMatches[0])) {
+                    $resolvedLocalPath = $globMatches[0];
+                }
+            }
+
+            // Also search by filename suffix if unique prefix was prepended
+            if (!$resolvedLocalPath && str_contains($uploadedFile, '---')) {
+                $fileSuffix = explode('---', $uploadedFile, 2)[1] ?? '';
+                if ($fileSuffix) {
+                    $globMatches = glob(public_path('media-storage/users-temp-uploads/*/*/*---' . $fileSuffix));
+                    if (!empty($globMatches) && is_file($globMatches[0])) {
+                        $resolvedLocalPath = $globMatches[0];
+                    }
+                }
+            }
+
+            // Also search for recent file in user temp uploads if original name was sent
+            if (!$resolvedLocalPath) {
+                $cleanName = Str::slug(pathinfo($uploadedFile, PATHINFO_FILENAME));
+                if ($cleanName) {
+                    $globMatches = glob(public_path('media-storage/users-temp-uploads/*/*/*---*' . $cleanName . '*'));
+                    if (!empty($globMatches) && is_file($globMatches[0])) {
+                        $resolvedLocalPath = $globMatches[0];
+                    }
+                }
+            }
+
+            // If still not found locally (e.g. Render container restart or multi-instance),
+            // restore the temp file from S3 bucket!
+            if (!$resolvedLocalPath && $this->currentDisk !== 'public-media-storage') {
+                $s3CandidateKeys = array_unique([
+                    $userTempPath . '/' . $uploadedFile,
+                    $vendorTempPath . '/' . $uploadedFile,
+                    'media-storage/users-temp-uploads/' . $uploadedFile,
+                ]);
+
+                try {
+                    $cloudDisk = YesFileStorage::on($this->currentDisk);
+                    foreach ($s3CandidateKeys as $s3Key) {
+                        $s3Key = trim($s3Key, '/');
+                        if ($cloudDisk->isExists($s3Key)) {
+                            $fileContents = $cloudDisk->getFileIfExists($s3Key);
+                            if ($fileContents) {
+                                $targetLocalDir = public_path($userTempPath);
+                                if (!File::isDirectory($targetLocalDir)) {
+                                    File::makeDirectory($targetLocalDir, 0777, true, true);
+                                }
+                                $downloadDest = public_path($userTempPath . DIRECTORY_SEPARATOR . $uploadedFile);
+                                file_put_contents($downloadDest, $fileContents);
+                                $resolvedLocalPath = $downloadDest;
+                                break;
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("S3 temp file restore failed: " . $e->getMessage());
+                }
+            }
+
+            if (! $resolvedLocalPath || ! file_exists($resolvedLocalPath)) {
                 return $this->engineFailedResponse(['show_message' => true], __tr('Temporary file expired or not found, please select the image again.'));
             }
 
-            $storagePath = null;
-            try {
-                $storagePath = $this->disk->getStoragePath($filePath);
-            } catch (\Throwable $e) {
-                $storagePath = public_path($filePath);
-            }
-
-            if (!$storagePath || !file_exists($storagePath)) {
-                $storagePath = public_path($filePath);
-            }
-
+            $storagePath = $resolvedLocalPath;
             $uploadedFile = $this->uploadedFileInstance($storagePath);
             $this->disk = YesFileStorage::on($this->currentDisk);
         }
@@ -489,10 +547,10 @@ class BaseMediaEngine extends BaseEngine
                 $moved = true;
             }
         } catch (\Throwable $e) {
-            if (isset($storagePath) && file_exists($storagePath)) {
-                $moved = File::copy($storagePath, $targetFilePath);
-                if ($moved) {
-                    @File::delete($storagePath);
+            if (isset($resolvedLocalPath) && file_exists($resolvedLocalPath)) {
+                $moved = File::copy($resolvedLocalPath, $targetFilePath);
+                if ($moved && $resolvedLocalPath !== $targetFilePath) {
+                    @File::delete($resolvedLocalPath);
                 }
             }
         }
@@ -520,8 +578,25 @@ class BaseMediaEngine extends BaseEngine
 
         // create path to thumbnail (resolve to absolute public_path if available)
         $localFileDestination = public_path($path.'/'.$fileName);
-        if (!File::exists($localFileDestination) && File::exists($path.'/'.$fileName)) {
-            $localFileDestination = $path.'/'.$fileName;
+        if (!File::exists($localFileDestination)) {
+            $vendorPath = getPathByKey('user_temp_uploads', ['{_uid}' => getVendorUid()]);
+            $candidates = [
+                public_path($vendorPath . '/' . $fileName),
+                public_path('media-storage/users-temp-uploads/' . $fileName),
+                $path . '/' . $fileName,
+            ];
+            foreach ($candidates as $cand) {
+                if (File::exists($cand)) {
+                    $localFileDestination = $cand;
+                    break;
+                }
+            }
+            if (!File::exists($localFileDestination)) {
+                $matches = glob(public_path('media-storage/users-temp-uploads/*/*/' . $fileName));
+                if (!empty($matches) && File::exists($matches[0])) {
+                    $localFileDestination = $matches[0];
+                }
+            }
         }
 
         $fileMimeType = File::exists($localFileDestination) ? File::mimeType($localFileDestination) : 'image/jpeg';
