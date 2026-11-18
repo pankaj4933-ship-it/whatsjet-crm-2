@@ -56,7 +56,7 @@ return [
             'secret' => env('AWS_SECRET_ACCESS_KEY') ? trim(env('AWS_SECRET_ACCESS_KEY')) : '87f60a4f4ab7b9c09a33694efaaeb91900bb7c693b0192542103834537bd935a',
             'region' => env('AWS_DEFAULT_REGION') ? trim(env('AWS_DEFAULT_REGION')) : 'ap-south-1',
             'bucket' => env('AWS_BUCKET') ? trim(env('AWS_BUCKET')) : 'adscale-media',
-            'url' => env('AWS_URL') ? trim(env('AWS_URL')) : 'https://qtzfdnyalnkdspywpjoq.supabase.co/storage/v1/object/public/adscale-media',
+            'url' => env('AWS_URL') ? trim(env('AWS_URL')) : ('https://qtzfdnyalnkdspywpjoq.supabase.co/storage/v1/object/public/' . (env('AWS_BUCKET') ? trim(env('AWS_BUCKET')) : 'adscale-media')),
             'endpoint' => env('AWS_ENDPOINT') ? trim(env('AWS_ENDPOINT')) : 'https://qtzfdnyalnkdspywpjoq.storage.supabase.co/storage/v1/s3',
             'use_path_style_endpoint' => true,
             'throw' => false,

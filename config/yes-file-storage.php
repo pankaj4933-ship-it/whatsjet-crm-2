@@ -80,13 +80,24 @@ return [
         ],
         'whatsapp_image' => [
             'restrictions' => [
-                'allowedFileTypes' => ['image/jpeg', 'image/png'],
-                'allowedFileExtensions' => ['jpg', 'png', 'jpeg'],
+                'allowedFileTypes' => [
+                    'image/jpeg',
+                    'image/jpg',
+                    'image/JPG',
+                    'image/JPEG',
+                    'image/png',
+                    'image/PNG',
+                    'image/pjpeg',
+                    'image/jfif',
+                    'image/webp',
+                    'application/octet-stream',
+                ],
+                'allowedFileExtensions' => ['jpg', 'png', 'jpeg', 'webp'],
             ],
         ],
         'whatsapp_sticker' => [
             'restrictions' => [
-                'allowedFileTypes' => ['image/webp'],
+                'allowedFileTypes' => ['image/webp', 'application/octet-stream'],
                 'allowedFileExtensions' => ['webp'],
             ],
         ],
@@ -94,9 +105,13 @@ return [
             'restrictions' => [
                 'allowedFileTypes' => [
                     'video/mp4',
-                    'video/3gp'
+                    'video/3gp',
+                    'video/quicktime',
+                    'video/x-msvideo',
+                    'video/webm',
+                    'application/octet-stream',
                 ],
-                'allowedFileExtensions' => ['mp4', '3gp'],
+                'allowedFileExtensions' => ['mp4', '3gp', 'mov', 'avi', 'webm'],
             ],
         ],
         'whatsapp_audio' => [
@@ -109,9 +124,21 @@ return [
                     'audio/ogg',
                     'video/mp4',
                     'audio/webm',
-                    'video/webm'
+                    'video/webm',
+                    'application/ogg',
+                    'application/x-ogg',
+                    'audio/x-opus+ogg',
+                    'audio/opus',
+                    'audio/mp3',
+                    'audio/x-m4a',
+                    'audio/m4a',
+                    'audio/x-aac',
+                    'audio/x-amr',
+                    'audio/wav',
+                    'audio/x-wav',
+                    'application/octet-stream',
                 ],
-                'allowedFileExtensions' => ['aac', 'm4a', 'mp4', 'mp3', 'mpga', 'amr', 'ogg', 'oga', 'webm'],
+                'allowedFileExtensions' => ['aac', 'm4a', 'mp4', 'mp3', 'mpga', 'amr', 'ogg', 'oga', 'opus', 'webm', 'wav'],
             ],
         ],
         'whatsapp_document' => [
@@ -132,8 +159,10 @@ return [
                     'applications/vnd.pdf',          // Vendor-specific
                     'text/pdf',                      // Misclassified occasionally
                     'text/x-pdf',                    // Also seen in misconfigured servers
+                    'application/octet-stream',
+                    'text/csv',
                 ],
-                'allowedFileExtensions' => ['txt', 'pdf', 'ppt', 'pps', 'doc', 'xls', 'docx', 'xlsx', 'pptx', 'xml'],
+                'allowedFileExtensions' => ['txt', 'pdf', 'ppt', 'pps', 'doc', 'xls', 'docx', 'xlsx', 'pptx', 'xml', 'csv'],
             ],
         ],
         'vendor_logo' => [

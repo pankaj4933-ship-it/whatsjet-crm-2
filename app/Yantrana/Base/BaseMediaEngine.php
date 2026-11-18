@@ -118,8 +118,8 @@ class BaseMediaEngine extends BaseEngine
             }
 
             $fileOriginalName = $file->getClientOriginalName();
-            $fileExtension = $file->getClientOriginalExtension();
-            $fileMimeType = $file->getClientMimeType();
+            $fileExtension = strtolower($file->getClientOriginalExtension());
+            $fileMimeType = strtolower($file->getClientMimeType() ?: '');
             $fileBaseName = Str::slug(basename($fileOriginalName, '.'.$fileExtension));
             $fileName = uniqid().'---'.$fileBaseName.".$fileExtension";
 
@@ -129,19 +129,52 @@ class BaseMediaEngine extends BaseEngine
                 return $this->engineFailedResponse([], __tr('Something went wrong.'));
             }
 
-            $restrictions = $this->elements[$requestFor]['restrictions'];
-            $allowedFileTypes = $restrictions['allowedFileTypes'];
+            $restrictions = $this->elements[$requestFor]['restrictions'] ?? [];
+            $allowedFileTypes = array_map('strtolower', $restrictions['allowedFileTypes'] ?? []);
+            $allowedFileExtensions = array_map('strtolower', $restrictions['allowedFileExtensions'] ?? []);
 
             // Check restrictions of file
-            $allowedFileExtensions = $restrictions['allowedFileExtensions'] ?? [];
-            if(!empty($allowedFileExtensions)) {
+            if (!empty($allowedFileExtensions)) {
                 if (! in_array($fileExtension, $allowedFileExtensions)) {
                     return $this->engineFailedResponse(['show_message' => true], __tr('Only __ex__ accepted.', [
                         '__ex__' => implode(', ', $allowedFileExtensions),
                     ]));
                 }
             }
-            if (! in_array($fileMimeType, $allowedFileTypes)) {
+
+            $mimeAliases = [
+                'image/jpg' => 'image/jpeg',
+                'image/pjpeg' => 'image/jpeg',
+                'image/jfif' => 'image/jpeg',
+                'image/x-png' => 'image/png',
+                'application/ogg' => 'audio/ogg',
+                'application/x-ogg' => 'audio/ogg',
+                'audio/x-opus+ogg' => 'audio/ogg',
+                'audio/opus' => 'audio/ogg',
+                'audio/x-m4a' => 'audio/mp4',
+                'audio/x-aac' => 'audio/aac',
+                'audio/mp3' => 'audio/mpeg',
+                'audio/x-mpeg-3' => 'audio/mpeg',
+                'audio/mpeg3' => 'audio/mpeg',
+                'audio/x-amr' => 'audio/amr',
+                'video/x-m4v' => 'video/mp4',
+            ];
+
+            $normalizedMimeType = $mimeAliases[$fileMimeType] ?? $fileMimeType;
+            $isExtensionAllowed = empty($allowedFileExtensions) || in_array($fileExtension, $allowedFileExtensions);
+
+            $isMimeValid = empty($allowedFileTypes)
+                || in_array($fileMimeType, $allowedFileTypes)
+                || in_array($normalizedMimeType, $allowedFileTypes)
+                || ($isExtensionAllowed && $fileMimeType === 'application/octet-stream')
+                || ($isExtensionAllowed && (
+                    (str_starts_with($requestFor, 'whatsapp_image') && str_starts_with($fileMimeType, 'image/')) ||
+                    (str_starts_with($requestFor, 'whatsapp_audio') && (str_starts_with($fileMimeType, 'audio/') || str_contains($fileMimeType, 'ogg'))) ||
+                    (str_starts_with($requestFor, 'whatsapp_video') && str_starts_with($fileMimeType, 'video/')) ||
+                    (str_starts_with($requestFor, 'whatsapp_document'))
+                ));
+
+            if (! $isMimeValid) {
                 return $this->engineFailedResponse([], __tr('Only __ex__ accepted', [
                     '__ex__' => implode(', ', $allowedFileTypes),
                 ]));
@@ -364,9 +397,37 @@ class BaseMediaEngine extends BaseEngine
     {
         $filesystem = new Filesystem();
         $name = $filesystem->name($path);
-        $extension = $filesystem->extension($path);
+        $extension = strtolower($filesystem->extension($path));
         $originalName = $name.'.'.$extension;
-        $mimeType = $filesystem->mimeType($path);
+        $mimeType = null;
+        try {
+            $mimeType = $filesystem->mimeType($path);
+        } catch (\Throwable $e) {}
+
+        $knownMimes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'ogg' => 'audio/ogg',
+            'oga' => 'audio/ogg',
+            'opus' => 'audio/ogg',
+            'mp3' => 'audio/mpeg',
+            'm4a' => 'audio/mp4',
+            'aac' => 'audio/aac',
+            'amr' => 'audio/amr',
+            'mp4' => 'video/mp4',
+            '3gp' => 'video/3gp',
+            'pdf' => 'application/pdf',
+        ];
+
+        if (!$mimeType || $mimeType === 'application/octet-stream' || ($extension === 'ogg' && str_contains($mimeType, 'ogg')) || (in_array($extension, ['jpg', 'jpeg']) && str_contains($mimeType, 'jpg'))) {
+            if (isset($knownMimes[$extension])) {
+                $mimeType = $knownMimes[$extension];
+            }
+        }
+
         $error = null;
 
         return new UploadedFile($path, $originalName, $mimeType, $error, $test);
@@ -511,23 +572,57 @@ class BaseMediaEngine extends BaseEngine
         }
 
         $fileOriginalName = $uploadedFile->getClientOriginalName();
-        $fileExtension = $uploadedFile->getClientOriginalExtension();
-        $fileMimeType = $uploadedFile->getClientMimeType();
+        $fileExtension = strtolower($uploadedFile->getClientOriginalExtension());
+        $fileMimeType = strtolower($uploadedFile->getClientMimeType() ?: '');
         $fileBaseName = str_slug(basename($fileOriginalName, '.'.$fileExtension));
         $fileName = $fileBaseName.'-'.uniqid().'.'.$fileExtension;
 
-        $restrictions = $this->elements[$allowedExtension]['restrictions'];
-        $allowedFileTypes = $restrictions['allowedFileTypes'];
-        // Check restrictions of file
-        $allowedFileExtensions = $restrictions['allowedFileExtensions'] ?? [];
-        if(!empty($allowedFileExtensions)) {
-            if (! in_array($fileExtension, $allowedFileExtensions)) {
+        $restrictions = $this->elements[$allowedExtension]['restrictions'] ?? [];
+        $allowedFileTypes = array_map('strtolower', $restrictions['allowedFileTypes'] ?? []);
+        $allowedFileExtensions = array_map('strtolower', $restrictions['allowedFileExtensions'] ?? []);
+
+        // Check restrictions of file extension
+        if (!empty($allowedFileExtensions)) {
+            if (!in_array($fileExtension, $allowedFileExtensions)) {
                 return $this->engineFailedResponse(['show_message' => true], __tr('Only __ex__ accepted.', [
                     '__ex__' => implode(', ', $allowedFileExtensions),
                 ]));
             }
         }
-        if (! in_array($fileMimeType, $allowedFileTypes)) {
+
+        $mimeAliases = [
+            'image/jpg' => 'image/jpeg',
+            'image/pjpeg' => 'image/jpeg',
+            'image/jfif' => 'image/jpeg',
+            'image/x-png' => 'image/png',
+            'application/ogg' => 'audio/ogg',
+            'application/x-ogg' => 'audio/ogg',
+            'audio/x-opus+ogg' => 'audio/ogg',
+            'audio/opus' => 'audio/ogg',
+            'audio/x-m4a' => 'audio/mp4',
+            'audio/x-aac' => 'audio/aac',
+            'audio/mp3' => 'audio/mpeg',
+            'audio/x-mpeg-3' => 'audio/mpeg',
+            'audio/mpeg3' => 'audio/mpeg',
+            'audio/x-amr' => 'audio/amr',
+            'video/x-m4v' => 'video/mp4',
+        ];
+
+        $normalizedMimeType = $mimeAliases[$fileMimeType] ?? $fileMimeType;
+        $isExtensionAllowed = empty($allowedFileExtensions) || in_array($fileExtension, $allowedFileExtensions);
+
+        $isMimeValid = empty($allowedFileTypes)
+            || in_array($fileMimeType, $allowedFileTypes)
+            || in_array($normalizedMimeType, $allowedFileTypes)
+            || ($isExtensionAllowed && $fileMimeType === 'application/octet-stream')
+            || ($isExtensionAllowed && (
+                (str_starts_with($allowedExtension, 'whatsapp_image') && str_starts_with($fileMimeType, 'image/')) ||
+                (str_starts_with($allowedExtension, 'whatsapp_audio') && (str_starts_with($fileMimeType, 'audio/') || str_contains($fileMimeType, 'ogg'))) ||
+                (str_starts_with($allowedExtension, 'whatsapp_video') && str_starts_with($fileMimeType, 'video/')) ||
+                (str_starts_with($allowedExtension, 'whatsapp_document'))
+            ));
+
+        if (!$isMimeValid) {
             return $this->engineFailedResponse(['show_message' => true], __tr('Only __ex__ accepted.', [
                 '__ex__' => implode(', ', $allowedFileTypes),
             ]));
