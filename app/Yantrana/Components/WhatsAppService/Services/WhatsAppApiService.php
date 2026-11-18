@@ -732,16 +732,73 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
      */
     public function uploadMedia(string $file, ?string $mimeType = null)
     {
+        $tempLocalFile = null;
         try {
             if (Str::startsWith($file, 'http')) {
-                if (! $mimeType) {
-                    return new Exception(__tr('For the url based media type is required'), 400);
+                if (!$mimeType) {
+                    $ext = strtolower(pathinfo(parse_url($file, PHP_URL_PATH), PATHINFO_EXTENSION));
+                    $knownMimes = [
+                        'ogg' => 'audio/ogg',
+                        'oga' => 'audio/ogg',
+                        'opus' => 'audio/ogg',
+                        'mp3' => 'audio/mpeg',
+                        'm4a' => 'audio/mp4',
+                        'aac' => 'audio/aac',
+                        'amr' => 'audio/amr',
+                        'wav' => 'audio/wav',
+                        'jpg' => 'image/jpeg',
+                        'jpeg' => 'image/jpeg',
+                        'png' => 'image/png',
+                        'webp' => 'image/webp',
+                        'gif' => 'image/gif',
+                        'mp4' => 'video/mp4',
+                        '3gp' => 'video/3gp',
+                        'pdf' => 'application/pdf',
+                    ];
+                    $mimeType = $knownMimes[$ext] ?? 'audio/ogg';
+                }
+                $tempLocalFile = tempnam(sys_get_temp_dir(), 'wa_upload_');
+                $context = stream_context_create([
+                    'http' => [
+                        'timeout' => 30,
+                        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                    ],
+                    'ssl' => [
+                        'verify_peer' => false,
+                        'verify_peer_name' => false,
+                    ]
+                ]);
+                $fileContents = @file_get_contents($file, false, $context);
+                if ($fileContents && strlen($fileContents) > 0) {
+                    file_put_contents($tempLocalFile, $fileContents);
+                    $file = $tempLocalFile;
+                } else {
+                    @unlink($tempLocalFile);
+                    $tempLocalFile = null;
+                    return null;
                 }
             } else {
-                if(!$mimeType) {
+                if (!file_exists($file)) {
+                    $candidates = [
+                        public_path($file),
+                        storage_path('app/' . $file),
+                    ];
+                    foreach ($candidates as $cand) {
+                        if (file_exists($cand)) {
+                            $file = $cand;
+                            break;
+                        }
+                    }
+                }
+                if (!$mimeType && file_exists($file)) {
                     $mimeType = mime_content_type($file);
                 }
             }
+
+            if (!file_exists($file) || filesize($file) === 0) {
+                return null;
+            }
+
             $ch = curl_init();
             $url = $this->baseApiRequestEndpoint . $this->getServiceConfiguration('current_phone_number_id') . '/media';
             $data = [
@@ -774,12 +831,13 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
                 return $result['id'] ?? null;
             }
             curl_close($ch);
-        } catch (Exception $e) {
-            abortIf(
-                true,
-                $e->getCode(),
-                $e->getMessage()
-            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WhatsApp uploadMedia error: ' . $e->getMessage());
+            return null;
+        } finally {
+            if ($tempLocalFile && file_exists($tempLocalFile)) {
+                @unlink($tempLocalFile);
+            }
         }
     }
     /**

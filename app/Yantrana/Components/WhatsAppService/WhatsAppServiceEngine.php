@@ -2723,6 +2723,17 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
         if ($fileUrl) {
             $fileUrl = str_replace(' ', '%20', $fileUrl);
         }
+        if (!$mediaUploadedId && $fileUrl) {
+            try {
+                $uploadResult = $this->whatsAppApiService->uploadMedia($fileUrl, $detectedMime);
+                if ($uploadResult && is_string($uploadResult)) {
+                    $mediaUploadedId = $uploadResult;
+                    $isNewMediaId = true;
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Automatic uploadMedia failed: ' . $e->getMessage());
+            }
+        }
         return [
             'type' => $mediaType,
             'link' => $fileUrl,

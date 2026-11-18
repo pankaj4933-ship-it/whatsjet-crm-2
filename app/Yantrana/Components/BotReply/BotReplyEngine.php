@@ -590,9 +590,12 @@ class BotReplyEngine extends BaseEngine implements BotReplyEngineInterface
         // media message
         if ($messageType == 'media') {
 
-            $mediaMessage = [
-                'caption' => $inputData['caption'] ?? '',
-            ];
+            $mediaMessage = array_merge(
+                data_get($botReply->__data, 'media_message', []),
+                [
+                    'caption' => $inputData['caption'] ?? '',
+                ]
+            );
             // Check if new media uploaded
             if (!__isEmpty(data_get($inputData, 'uploaded_media_file_name'))) {
                 $inputData['header_type'] = $inputData['media_header_type'];
