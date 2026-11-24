@@ -702,7 +702,15 @@ class WhatsAppServiceController extends BaseController
             return response('Invalid request', 403);
         }
         // process the other update requests
-        $this->whatsAppServiceEngine->processWebhook($request, $vendorUid);
+        try {
+            $this->whatsAppServiceEngine->processWebhook($request, $vendorUid);
+        } catch (\Throwable $e) {
+            \Log::error("WhatsApp Webhook processing error for vendor [{$vendorUid}]: " . $e->getMessage(), [
+                'exception' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+        }
         return response('done', 200);
     }
 
