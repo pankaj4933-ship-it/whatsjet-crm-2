@@ -84,9 +84,6 @@ $currentAppTheme=getUserAppTheme();
                     <div class="col-6 collapse-brand">
                         <a href="{{ url('/') }}">
 
-                            <!-- App Theme Change -->
-                            @if( $currentAppTheme=='dark')
-
                             <!-- Logo -->
                             <img src="{{ getAppSettings('logo_image_url') }}" class="light-theme-logo"
                                 alt="{{ getAppSettings('name') }}">
