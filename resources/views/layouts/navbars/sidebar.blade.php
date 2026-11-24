@@ -15,43 +15,12 @@ $currentAppTheme=getUserAppTheme();
             </button>
             <!-- Brand -->
             <a class="navbar-brand pt-0 d-none d-sm-inline" href="{{ url('/') }}">
-                <!-- App Theme Change -->
-                @if( $currentAppTheme=='dark')
-                <!-- dark theme -->
-                <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-normal dark-theme-logo text-dark" alt="{{ getAppSettings('name') }}">
-                <img src="{{ getAppSettings('dark_theme_small_logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-small dark-theme-small-logo text-dark"
-                    alt="{{ getAppSettings('name') }}">
-                <!-- /dark theme -->
-                @elseif($currentAppTheme=='system_default')
-                <!-- dark theme -->
-                <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-normal dark-theme-logo system-theme-dark-logo text-dark"
-                    alt="{{ getAppSettings('name') }}" media="(prefers-color-scheme: dark)">
-                <img src="{{ getAppSettings('dark_theme_small_logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-small dark-theme-small-logo system-theme-dark-small-logo text-dark"
-                    alt="{{ getAppSettings('name') }}">
-                <!-- /dark theme -->
-                <!-- light theme -->
-                <img src="{{ getAppSettings('logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-normal light-theme-logo system-theme-light-logo"
-                    alt="{{ getAppSettings('name') }}">
-                <img src="{{ getAppSettings('small_logo_image_url') }}"
-                    class="navbar-brand-img lw-sidebar-logo-small light-theme-small-logo system-theme-light-small-logo text-dark"
-                    alt="{{ getAppSettings('name') }}">
-
-                @else
-                <!-- light theme -->
+                <!-- Logo -->
                 <img src="{{ getAppSettings('logo_image_url') }}"
                     class="navbar-brand-img lw-sidebar-logo-normal light-theme-logo" alt="{{ getAppSettings('name') }}">
                 <img src="{{ getAppSettings('small_logo_image_url') }}"
                     class="navbar-brand-img lw-sidebar-logo-small light-theme-small-logo text-dark"
                     alt="{{ getAppSettings('name') }}">
-                <!-- /light theme -->
-
-                @endif
-                <!-- /App Theme Change -->
 
 
             </a>
@@ -118,30 +87,9 @@ $currentAppTheme=getUserAppTheme();
                             <!-- App Theme Change -->
                             @if( $currentAppTheme=='dark')
 
-                            <!-- dark theme logo  -->
-                            <img src="{{ getAppSettings('dark_theme_logo_image_url') }}" class="dark-theme-logo "
+                            <!-- Logo -->
+                            <img src="{{ getAppSettings('logo_image_url') }}" class="light-theme-logo"
                                 alt="{{ getAppSettings('name') }}">
-
-                            <!-- /dark theme -->
-                            @elseif($currentAppTheme=='system_default')
-
-                            <!-- dark theme logo  -->
-                            <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                                class="dark-theme-logo system-theme-dark-logo" alt="{{ getAppSettings('name') }}">
-                            <!-- light theme logo  -->
-                            <img src="{{ getAppSettings('logo_image_url') }}"
-                                class="light-theme-logo system-theme-light-logo" alt="{{ getAppSettings('name') }}">
-
-
-                            @else
-
-                            <!-- light theme logo  -->
-                            <img src="{{ getAppSettings('logo_image_url') }}" class="light-theme-logo "
-                                alt="{{ getAppSettings('name') }}">
-                            <!-- /light theme -->
-
-                            @endif
-                            <!-- /App Theme Change -->
 
 
                         </a>

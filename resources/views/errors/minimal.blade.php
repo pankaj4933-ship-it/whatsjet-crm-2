@@ -37,15 +37,7 @@
     <link rel="icon" href="<?= getAppSettings('favicon_image_url') ?>" type="image/x-icon">
 
     <!-- App Theme Change -->
-    @if ($currentAppTheme == 'dark')
-        <link rel="stylesheet" href="{{ __yesset('dist/css/dark-theme.css') }}">
-        <!-- Dark Theme Favicon -->
-        <link href="{{ getAppSettings('dark_theme_favicon_image_url') }}" rel="icon"
-            media="(prefers-color-scheme: dark)">
-    @elseif($currentAppTheme == 'system_default')
-        <link rel="stylesheet" href="{{ __yesset('dist/css/dark-theme.css') }}" media="(prefers-color-scheme: dark)">
-    @endif
-    <!-- /App Theme Change -->
+    <!-- App Theme: Light Only -->
 </head>
 
 <body id="page-top" class="lw-gradient-bg">
@@ -56,26 +48,9 @@
     <!-- Begin Page Content -->
     <div class="lw-page-content lw-other-page-content lw-error-page-block-section">
         <section class="container text-center">
-            <!-- App Theme Change -->
-            @if ($currentAppTheme == 'dark')
-                {{-- dark theme logo --}}
-                <img src="{{ getAppSettings('dark_theme_logo_image_url') }}" class=" dark-theme-logo lw-error-logo mb-5"
-                    alt="{{ getAppSettings('name') }}">
-                <!-- /dark theme -->
-            @elseif($currentAppTheme == 'system_default')
-                <img src="{{ getAppSettings('logo_image_url') }}"
-                    class="light-theme-logo system-theme-light-logo lw-error-logo" alt="{{ getAppSettings('name') }}">
-                {{-- dark theme logo --}}
-                <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                    class=" dark-theme-logo system-theme-dark-logo lw-error-logo mb-5"
-                    alt="{{ getAppSettings('name') }}" media="(prefers-color-scheme: dark)">
-            @else
-                {{-- light theme logo --}}
-                <img src="{{ getAppSettings('logo_image_url') }}" class="light-theme-logo lw-error-logo mb-5"
-                    alt="{{ getAppSettings('name') }}">
-                <!-- /App Theme Change -->
-            @endif
-            <!-- App Theme Change -->
+            <!-- Logo -->
+            <img src="{{ getAppSettings('logo_image_url') }}" class="light-theme-logo lw-error-logo mb-5"
+                alt="{{ getAppSettings('name') }}">
 
             <div class="row">
                 <div class="col-lg-7 col-sm-12 m-auto col-xl-5">

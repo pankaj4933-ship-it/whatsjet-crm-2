@@ -15,20 +15,8 @@ $currentAppTheme=getUserAppTheme();
                 <img src="{{ getVendorSettings('logo_image_url') }}" class="navbar-brand-img"
                     alt="{{ getVendorSettings('name') }}" >
             @else
-             <!-- App Theme Change -->
-                 <!-- App Theme Change -->
-    @if( $currentAppTheme=='dark')
-    <img src="{{ getAppSettings('dark_theme_logo_image_url') }}" class="navbar-brand-img  dark-theme-logo" alt="{{ getAppSettings('name') }}">
-    @elseif($currentAppTheme=='system_default')
-     <!-- dark theme -->
-     <img src="{{ getAppSettings('dark_theme_logo_image_url') }}" class="navbar-brand-img  dark-theme-logo system-theme-dark-logo" alt="{{ getAppSettings('name') }}" media="(prefers-color-scheme: dark)">
-     <img src="{{ getAppSettings('logo_image_url') }}" class="navbar-brand-img light-theme-logo system-theme-light-logo" alt="{{ getAppSettings('name') }}">
-   <!-- /light theme --> 
-   @else
-       <!-- light theme -->
-       <img src="{{ getAppSettings('logo_image_url') }}" class="navbar-brand-img light-theme-logo" alt="{{ getAppSettings('name') }}">
-        <!-- /light theme -->
-   @endif
+             <!-- Logo -->
+             <img src="{{ getAppSettings('logo_image_url') }}" class="navbar-brand-img light-theme-logo" alt="{{ getAppSettings('name') }}">
             @endif
         </a>
         <div class="collapse navbar-collapse" id="navbar-collapse-main">
@@ -37,27 +25,9 @@ $currentAppTheme=getUserAppTheme();
                 <div class="row">
                     <div class="col-6 collapse-brand">
                         <a class="navbar-brand pt-0" href="{{ url('/') }}">
-                    <!-- App Theme Change -->
-                    @if ($currentAppTheme == 'dark')
-                        {{-- dark theme logo --}}
-                        <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                            class="card-img-top  dark-theme-logo" alt="{{ getAppSettings('name') }}">
-                        <!-- /dark theme -->
-                    @elseif($currentAppTheme == 'system_default')
-                        <img src="{{ getAppSettings('logo_image_url') }}"
-                            class="card-img-top light-theme-logo system-theme-light-logo"
-                            alt="{{ getAppSettings('name') }}">
-                        {{-- dark theme logo --}}
-                        <img src="{{ getAppSettings('dark_theme_logo_image_url') }}"
-                            class="card-img-top  dark-theme-logo system-theme-dark-logo"
-                            alt="{{ getAppSettings('name') }}" media="(prefers-color-scheme: dark)">
-                    @else
-                        {{-- light theme logo --}}
-                        <img src="{{ getAppSettings('logo_image_url') }}" class="card-img-top light-theme-logo"
-                            alt="{{ getAppSettings('name') }}">
-                        <!-- /App Theme Change -->
-                    @endif
-                    <!-- App Theme Change -->
+                    <!-- Logo -->
+                    <img src="{{ getAppSettings('logo_image_url') }}" class="card-img-top light-theme-logo"
+                        alt="{{ getAppSettings('name') }}">
                 </a>
                     </div>
                     <div class="col-6 collapse-close">

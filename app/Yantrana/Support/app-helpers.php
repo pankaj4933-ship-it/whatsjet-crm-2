@@ -2062,17 +2062,7 @@ if (! function_exists('getUserAppTheme')) {
      */
     function getUserAppTheme()
     {
-        $themeOptions = configItem('theme_options');
-        $appTheme = '';
-        // Check if theme changes are allowed and if a custom theme exists in the session
-        if (getAppSettings('allow_to_change_theme') and session()->has('users_current_app_theme')) {
-            $appTheme = session('users_current_app_theme');
-        }
-        if (!(getAppSettings('allow_to_change_theme')) or ! $appTheme) {
-            // Default theme from settings
-            $appTheme = getAppSettings('current_app_theme');
-        }
-        return $appTheme;
+        return 'light';
     }
 }
 if (! function_exists('addOpacityToHex')) {

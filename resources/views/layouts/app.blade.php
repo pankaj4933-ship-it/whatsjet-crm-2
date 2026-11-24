@@ -41,15 +41,7 @@ $currentAppTheme ='';
     'dist/css/app.css',
     // 'dist/css/dark-theme.css'
     ]) !!}
-        <!-- App Theme Change -->
-        @if($currentAppTheme=='dark' ) 
-        <link rel="stylesheet" href="{{ __yesset('dist/css/dark-theme.css')}}">
-        <!-- Dark Theme Favicon -->
-        <link href="{{getAppSettings('dark_theme_favicon_image_url') }}" rel="icon" media="(prefers-color-scheme: dark)">
-        @elseif( $currentAppTheme=='system_default')
-        <link rel="stylesheet" href="{{ __yesset('dist/css/dark-theme.css')}}"  media="(prefers-color-scheme: dark)">
-        @endif
-        <!-- /App Theme Change -->
+        <!-- App Theme: Light Only -->
 
     {{-- custom app css --}}
     <link href="{{ route('app.load_custom_style') }}" rel="stylesheet"  />

@@ -13,13 +13,11 @@
                 {{  __tr('Upload will be processed automatically on valid selection.') }}
             </div>
         </div>
-           <!-- Light Theme -->
+        <!-- Logo and Favicon Settings -->
         <fieldset>
-            <legend>{{  __tr('Dark / Light Theme') }}</legend>
-                <!-- Light Theme -->
-                <h3><?= __tr('Light Theme') ?></h3>
-                <div class=" row ">
-                 <div class="col-lg-3">
+            <legend>{{  __tr('Logo & Favicon Settings') }}</legend>
+                <div class="row">
+                 <div class="col-lg-4">
                        <!-- upload logo -->
                    <div class="form-group">
                        <label for="lwUploadLogo"><?= __tr('Logo') ?></label>
@@ -27,7 +25,7 @@
                    </div>
                     <!-- /upload logo -->
                  </div>
-                 <div class="col-lg-2">
+                 <div class="col-lg-4">
                      <!-- upload small logo -->
                     <div class="form-group ">
                        <label for="lwUploadSmallLogo"><?= __tr('Small Logo') ?></label>
@@ -35,7 +33,7 @@
                     </div>
                 </div>
                     <!-- /upload small logo -->
-                    <div class="col-lg-2">
+                    <div class="col-lg-4">
                             <!-- upload favicon -->
                         <div class="form-group">
                             <label for="lwUploadFavicon"><?= __tr('Favicon') ?></label>
@@ -44,38 +42,8 @@
                             <!-- /upload favicon -->
                     </div>
                </div>
-               <!-- Light Theme -->
-               <!-- Dark Theme -->
-               <h3 class="mt-3"><?= __tr('Dark Theme') ?></h3>
-               <div class="row">
-                <div class="col-lg-3">
-                     <!-- upload logo -->
-                    <div class="form-group">
-                        <label for="lwUploadDarkThemeLogo"><?= __tr('Logo') ?></label>
-                    <input type="file" data-lw-plugin="lwUploader" data-label-idle="{{ __tr('Select New Logo') }}" data-allow-revert="true" data-instant-upload="true" data-action="<?= route('media.dark.theme.upload_logo') ?>" id="lwUploadDarkThemeLogo" data-callback="afterUploadedFile" data-default-image-url="<?= getAppSettings('dark_theme_logo_image_url') ?>">
-                    </div>
-                     <!-- /upload logo -->
-                </div>
-                <div class="col-lg-2">
-                      <!-- upload small logo -->
-                    <div class="form-group ">
-                        <label for="lwUploadDarkThemeSmallLogo"><?= __tr('Small Logo') ?></label>
-                    <input type="file" data-lw-plugin="lwUploader" data-label-idle="{{ __tr('Select New Small Logo') }}" data-allow-revert="true" data-instant-upload="true" data-action="<?= route('media.dark.theme.upload_small_logo') ?>" id="lwUploadDarkThemeSmallLogo" data-callback="afterUploadedFile" data-default-image-url="<?= getAppSettings('dark_theme_small_logo_image_url') ?>">
-                    </div>
-                </div>
-                     <!-- /upload small logo -->
-                     <div class="col-lg-2">
-                      <!-- upload favicon -->
-                    <div class="form-group">
-                        <label for="lwUploadDarkThemeFavicon"><?= __tr('Favicon') ?></label>
-                        <input type="file" data-lw-plugin="lwUploader" data-label-idle="{{ __tr('Select New Favicon') }}" data-instant-upload="true" data-action="<?= route('media.dark.theme.upload_favicon') ?>" data-callback="afterUploadedFile" id="lwUploadDarkThemeFavicon" data-default-image-url="<?= getAppSettings('dark_theme_favicon_image_url') ?>">
-                    </div>
-                </div>
-                     <!-- /upload favicon -->
-                </div>
-        <!-- Dark Theme -->
         </fieldset>
-           <!-- /Light Theme -->
+        <!-- /Logo and Favicon Settings -->
     </div>
 
     <hr>

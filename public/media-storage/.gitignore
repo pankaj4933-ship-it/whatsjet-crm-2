@@ -1,4 +1,10 @@
 *
 !.gitignore
 !.htaccess
-!logo/logo.svg
+!logo/
+!logo/**
+!small_logo/
+!small_logo/**
+!favicon/
+!favicon/**
+

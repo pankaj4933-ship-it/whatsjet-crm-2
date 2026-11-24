@@ -924,7 +924,7 @@ return [
             'allow_to_change_theme' => [
                 'key' => 'allow_to_change_theme',
                 'data_type' => 2,    // bool
-                'default' => true,
+                'default' => false,
             ],
             'disable_bg_image' => [
                 'key' => 'disable_bg_image',
