@@ -235,11 +235,11 @@ $techAppConfig = [
 
     /* Define logo name of application
     ------------------------------------------------------------------------- */
-    'logo_name' => 'logo.svg',
+    'logo_name' => 'logo.png',
 
     /* Define small logo name of application
     ------------------------------------------------------------------------- */
-    'small_logo_name' => 'logo-short.svg',
+    'small_logo_name' => 'logo-short.png',
 
     /* Define favicon name of application
     ------------------------------------------------------------------------- */

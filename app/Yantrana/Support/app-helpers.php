@@ -588,7 +588,7 @@ if (! function_exists('getAppSettings')) {
         if ($itemName == 'small_logo_image_url') {
             $smallLogoName = getAppSettings('small_logo_name');
             $smallLogoNameInConfig = configItem('small_logo_name');
-            if (!$smallLogoName) {
+            if (!$smallLogoName or $smallLogoName == $smallLogoNameInConfig) {
                 return asset('imgs/' . $smallLogoNameInConfig);
             }
             $smallLogoFilePath = getPathByKey('small_logo') . '/' . $smallLogoName;
@@ -626,7 +626,7 @@ if (! function_exists('getAppSettings')) {
         if ($itemName == 'dark_theme_small_logo_image_url') {
             $smallLogoName = getAppSettings('dark_theme_small_logo_name');
             $smallLogoNameInConfig = configItem('dark_theme_small_logo_name');
-            if (!$smallLogoName) {
+            if (!$smallLogoName or $smallLogoName == $smallLogoNameInConfig) {
                 return asset('imgs/' . $smallLogoNameInConfig);
             }
             $smallLogoFilePath = getPathByKey('dark_theme_small_logo') . '/' . $smallLogoName;
