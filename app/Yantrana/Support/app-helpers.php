@@ -575,63 +575,24 @@ if (! function_exists('getAppSettings')) {
 
         // Check if request for logo image url
         if ($itemName == 'logo_image_url') {
-            $logoName = getAppSettings('logo_name');
-            $logoNameInConfig = configItem('logo_name');
-            if ($logoName == $logoNameInConfig) {
-                return asset('imgs/' . $logoNameInConfig);
-            }
-            $logoFilePath = getPathByKey('logo') . '/' . $logoName;
-            $logoImageUrl = getMediaUrl($logoFilePath);
-            return $logoImageUrl;
+            return asset('imgs/logo.png');
         }
         // Check if request for small logo image url
         if ($itemName == 'small_logo_image_url') {
-            $smallLogoName = getAppSettings('small_logo_name');
-            $smallLogoNameInConfig = configItem('small_logo_name');
-            if (!$smallLogoName or $smallLogoName == $smallLogoNameInConfig) {
-                return asset('imgs/' . $smallLogoNameInConfig);
-            }
-            $smallLogoFilePath = getPathByKey('small_logo') . '/' . $smallLogoName;
-            $smallLogoImageUrl = getMediaUrl($smallLogoFilePath);
-            return $smallLogoImageUrl;
+            return asset('imgs/logo-short.png');
         }
 
         // Check if request for favicon url
         if ($itemName == 'favicon_image_url') {
-            $faviconName = getAppSettings('favicon_name');
-            $faviconNameInConfig = configItem('favicon_name');
-            if ($faviconName == $faviconNameInConfig) {
-                return asset('imgs/' . $faviconNameInConfig);
-            }
-            $faviconFilePath = getPathByKey('favicon') . '/' . $faviconName;
-            $faviconImageUrl = getMediaUrl($faviconFilePath);
-            if (! $faviconImageUrl) {
-                $faviconImageUrl = asset('imgs/' . configItem('favicon_name'));
-            }
-
-            return $faviconImageUrl;
+            return asset('imgs/favicon.png');
         }
         // Check if request for dark theme logo image url
         if ($itemName == 'dark_theme_logo_image_url') {
-            $logoName = getAppSettings('dark_theme_logo_name');
-            $logoNameInConfig = configItem('dark_theme_logo_name');
-            if ($logoName == $logoNameInConfig) {
-                return asset('imgs/' . $logoNameInConfig);
-            }
-            $logoFilePath = getPathByKey('dark_theme_logo') . '/' . $logoName;
-            $logoImageUrl = getMediaUrl($logoFilePath);
-            return $logoImageUrl;
+            return asset('imgs/logo.png');
         }
         // Check if request for dark theme small logo image url
         if ($itemName == 'dark_theme_small_logo_image_url') {
-            $smallLogoName = getAppSettings('dark_theme_small_logo_name');
-            $smallLogoNameInConfig = configItem('dark_theme_small_logo_name');
-            if (!$smallLogoName or $smallLogoName == $smallLogoNameInConfig) {
-                return asset('imgs/' . $smallLogoNameInConfig);
-            }
-            $smallLogoFilePath = getPathByKey('dark_theme_small_logo') . '/' . $smallLogoName;
-            $smallLogoImageUrl = getMediaUrl($smallLogoFilePath);
-            return $smallLogoImageUrl;
+            return asset('imgs/logo-short.png');
         }
 
         // Check if request for dark theme favicon url
@@ -818,13 +779,16 @@ if (! function_exists('getVendorSettings')) {
         }
         // Check if request for logo image url
         if ($itemName == 'logo_image_url') {
-            $logoName = $storeConfiguration['logo_image'];
+            $logoName = $storeConfiguration['logo_image'] ?? null;
+            if (!$logoName) {
+                return getAppSettings('logo_image_url');
+            }
             $logoFilePath = getPathByKey('vendor_logo', [
                 '{_uid}' => $vendorUid,
             ]) . '/' . $logoName;
             $logoImageUrl = getMediaUrl($logoFilePath);
             if (! $logoImageUrl) {
-                $logoImageUrl = '';
+                $logoImageUrl = getAppSettings('logo_image_url');
             }
 
             return $logoImageUrl;
