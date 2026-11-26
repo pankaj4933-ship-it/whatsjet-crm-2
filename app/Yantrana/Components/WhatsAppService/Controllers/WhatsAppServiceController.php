@@ -677,26 +677,43 @@ class WhatsAppServiceController extends BaseController
     {
         // webhook verification process
         if ($request->isMethod('get')) {
-            if ($request->has('hub_challenge') and $request->has('hub_verify_token')) {
+            $hubChallenge = $request->get('hub_challenge') 
+                ?: $request->get('hub.challenge') 
+                ?: $request->query('hub_challenge') 
+                ?: $request->query('hub.challenge')
+                ?: array_get($_GET, 'hub_challenge')
+                ?: array_get($_GET, 'hub.challenge');
+
+            $hubVerifyToken = $request->get('hub_verify_token') 
+                ?: $request->get('hub.verify_token') 
+                ?: $request->query('hub_verify_token') 
+                ?: $request->query('hub.verify_token')
+                ?: array_get($_GET, 'hub_verify_token')
+                ?: array_get($_GET, 'hub.verify_token');
+
+            if ($hubChallenge && $hubVerifyToken) {
                 $verifyToken = sha1($vendorUid);
-                if ($request->get('hub_verify_token') === $verifyToken) {
-                    // if its base webhook call from service
-                    if($vendorUid == 'service-whatsapp') {
-                        return response($request->get('hub_challenge'));
+                if ($hubVerifyToken === $verifyToken) {
+                    // Update database for webhook verification without blocking the fast response
+                    try {
+                        if ($vendorUid != 'service-whatsapp') {
+                            $vendorId = getPublicVendorId($vendorUid);
+                            if ($vendorId) {
+                                $this->vendorSettingsEngine->updateProcess('whatsapp_cloud_api_setup', [
+                                    'webhook_verified_at' => now()
+                                ], $vendorId);
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error("Webhook verification error: " . $e->getMessage());
                     }
-                    $vendorId = getPublicVendorId($vendorUid);
-                    if (!$vendorId) {
-                        return false;
-                    }
-                    
-                    // update configuration for webhook
-                    $this->vendorSettingsEngine->updateProcess('whatsapp_cloud_api_setup', [
-                        'webhook_verified_at' => now()
-                    ], $vendorId);
-                    updateModelsViaVendorBroadcast($vendorUid, [
-                        'isWebhookVerified' => true
+
+                    // Return plain text challenge immediately with explicit Content-Length and Connection: close
+                    return response($hubChallenge, 200, [
+                        'Content-Type' => 'text/plain; charset=utf-8',
+                        'Connection' => 'close',
+                        'Content-Length' => (string) strlen($hubChallenge),
                     ]);
-                    return response($request->get('hub_challenge'));
                 }
             }
             return response('Invalid request', 403);
