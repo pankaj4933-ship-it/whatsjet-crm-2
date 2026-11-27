@@ -675,7 +675,7 @@ class WhatsAppServiceController extends BaseController
      */
     public function webhook(BaseRequestTwo $request, $vendorUid)
     {
-        // webhook verification process
+        // webhook verification process - must respond immediately without any blocking DB queries
         if ($request->isMethod('get')) {
             $hubChallenge = $request->get('hub_challenge') 
                 ?: $request->get('hub.challenge') 
@@ -694,25 +694,11 @@ class WhatsAppServiceController extends BaseController
             if ($hubChallenge && $hubVerifyToken) {
                 $verifyToken = sha1($vendorUid);
                 if ($hubVerifyToken === $verifyToken) {
-                    // Update database for webhook verification without blocking the fast response
-                    try {
-                        if ($vendorUid != 'service-whatsapp') {
-                            $vendorId = getPublicVendorId($vendorUid);
-                            if ($vendorId) {
-                                $this->vendorSettingsEngine->updateProcess('whatsapp_cloud_api_setup', [
-                                    'webhook_verified_at' => now()
-                                ], $vendorId);
-                            }
-                        }
-                    } catch (\Throwable $e) {
-                        \Log::error("Webhook verification error: " . $e->getMessage());
-                    }
-
-                    // Return plain text challenge immediately with explicit Content-Length and Connection: close
-                    return response($hubChallenge, 200, [
+                    // Return plain text challenge instantly with explicit Content-Length and Connection: close
+                    return response((string) $hubChallenge, 200, [
                         'Content-Type' => 'text/plain; charset=utf-8',
                         'Connection' => 'close',
-                        'Content-Length' => (string) strlen($hubChallenge),
+                        'Content-Length' => (string) strlen((string) $hubChallenge),
                     ]);
                 }
             }

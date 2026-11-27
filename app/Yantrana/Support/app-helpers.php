@@ -1560,12 +1560,16 @@ if (! function_exists('getViaSharedUrl')) {
      */
     function getViaSharedUrl(string $webhookUrl)
     {
-        if (config('app.debug')) {
-            $webhookUrl = config('__misc.ngrok_url') ? strtr($webhookUrl, [
-                (request()->isSecure() ? secure_url('/') : url('/')) . '/' => config('__misc.ngrok_url'),
-            ]) : $webhookUrl;
+        if (config('app.debug') and config('__misc.ngrok_url')) {
+            $ngrokUrl = rtrim(config('__misc.ngrok_url'), '/') . '/';
+            $baseUrl = rtrim(url('/'), '/') . '/';
+            $secureBaseUrl = rtrim(secure_url('/'), '/') . '/';
+            $webhookUrl = strtr($webhookUrl, [
+                $baseUrl => $ngrokUrl,
+                $secureBaseUrl => $ngrokUrl,
+            ]);
         }
-        return $webhookUrl;
+        return preg_replace('#(?<!:)//+#', '/', $webhookUrl);
     }
 }
 if (! function_exists('maskForDemo')) {

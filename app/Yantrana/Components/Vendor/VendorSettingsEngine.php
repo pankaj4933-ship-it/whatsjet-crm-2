@@ -303,6 +303,9 @@ class VendorSettingsEngine extends BaseEngine implements VendorSettingsEngineInt
                                 'show_message' => true
                             ], __tr('Failed to register Webhook.'));
                         }
+                        $this->updateProcess('whatsapp_cloud_api_setup', [
+                            'webhook_verified_at' => now()
+                        ], $vendorId);
                     }
                     if (in_array($inputKey, [
                         'whatsapp_access_token',
