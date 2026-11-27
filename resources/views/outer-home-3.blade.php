@@ -199,6 +199,10 @@
         </div>
     </header>
     <!-- /masthead section -->
+    <!-- Meta Business Partner badge -->
+    <div class="text-center my-4">
+        <img src="{{ asset('imgs/meta-business-partner.png') }}" alt="Meta Business Partner" style="max-width:200px; height:auto;" />
+    </div>
 
     <!-- why choose section -->
     <section class="lw-why-choose-section">
