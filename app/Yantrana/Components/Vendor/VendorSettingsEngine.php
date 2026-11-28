@@ -426,9 +426,16 @@ class VendorSettingsEngine extends BaseEngine implements VendorSettingsEngineInt
                 }
                 // sync templates
                 if (isset($inputData['whatsapp_business_account_id']) and $inputData['whatsapp_business_account_id']) {
-                    // sync templates
-                    app()->make(\App\Yantrana\Components\WhatsAppService\WhatsAppTemplateEngine::class)->processSyncTemplates();
-                    app()->make(\App\Yantrana\Components\WhatsAppService\WhatsAppServiceEngine::class)->refreshHealthStatus();
+                    ignoreFacebookApiError(true);
+                    try {
+                        // sync templates
+                        app()->make(\App\Yantrana\Components\WhatsAppService\WhatsAppTemplateEngine::class)->processSyncTemplates();
+                        app()->make(\App\Yantrana\Components\WhatsAppService\WhatsAppServiceEngine::class)->refreshHealthStatus();
+                    } catch (\Throwable $th) {
+                        error_log('VendorSettingsEngine post-save sync error: ' . $th->getMessage());
+                    } finally {
+                        ignoreFacebookApiError(false);
+                    }
                 }
             }
 

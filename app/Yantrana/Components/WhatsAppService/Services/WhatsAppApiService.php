@@ -1064,6 +1064,7 @@ class WhatsAppApiService extends BaseEngine implements WhatsAppServiceEngineInte
                     $this->vendorId ?? getVendorId()
                 );
             }
+            error_log('WhatsAppApiService FB API Error [' . $response->status() . ']: ' . $userMessage . ' | ignored=' . (ignoreFacebookApiError() ? '1' : '0'));
             // stop and response back for error if any
             if (!ignoreFacebookApiError()) {
                 // stop and response back for error if any

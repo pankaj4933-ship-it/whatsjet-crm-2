@@ -168,11 +168,18 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
             updateProgressTextModel(
                 __tr('requesting contacts ...')
             );
-            $contactsSyncRequest = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$phoneNumberId}/smb_app_data", [
-                'messaging_product' => 'whatsapp',
-                'sync_type' => 'smb_app_state_sync'
-            ]);
-            $contactsSyncRequestId = $contactsSyncRequest['request_id'] ?? null;
+            ignoreFacebookApiError(true);
+            try {
+                $contactsSyncRequest = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$phoneNumberId}/smb_app_data", [
+                    'messaging_product' => 'whatsapp',
+                    'sync_type' => 'smb_app_state_sync'
+                ]);
+                $contactsSyncRequestId = $contactsSyncRequest['request_id'] ?? null;
+            } catch (\Throwable $th) {
+                error_log('smb_app_data sync error: ' . $th->getMessage());
+            } finally {
+                ignoreFacebookApiError(false);
+            }
         }
         updateProgressTextModel(
             __tr('finalizing ...')
@@ -398,6 +405,7 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
             if (!$userMessage) {
                 $userMessage = $e->getMessage();
             }
+            error_log('WhatsAppConnectApiService FB API Error [' . $response->status() . ']: ' . $userMessage . ' | ignored=' . (ignoreFacebookApiError() ? '1' : '0'));
             \Log::error('WhatsAppConnectApiService FB API Error', [
                 'status' => $response->status(),
                 'message' => $userMessage,
