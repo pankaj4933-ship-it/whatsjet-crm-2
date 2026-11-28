@@ -147,18 +147,22 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
             'vendorUid' => $vendorUid,
         ]));
         // https://developers.facebook.com/docs/whatsapp/embedded-signup/webhooks/override#delete-waba-alternate-callback
+        // Ignore permission errors for subscribed_apps as this is non-critical and can be handled via app-level webhook
+        ignoreFacebookApiError(true);
         $subscribeToWebhook = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps");
         $webhookOverride = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps", [
             "override_callback_uri" => $webhookUrl,
             "verify_token" => sha1($vendorUid)
         ]);
+        ignoreFacebookApiError(false);
         // __logDebug('webhookOverride', $webhookOverride);
-        abortIf(!$webhookOverride['success'] ?? null, 402, __tr('Failed register a webhook'));
         updateProgressTextModel(
             __tr('fetching events subscriptions ...')
         );
-        // fetch existing records
+        // fetch existing records (ignore permission errors, non-critical)
+        ignoreFacebookApiError(true);
         $webhookOverrides = $this->apiGetRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps");
+        ignoreFacebookApiError(false);
         $contactsSyncRequestId = null;
         if($isBusinessAppOnboarding) {
             updateProgressTextModel(
@@ -240,11 +244,14 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
         if (!$this->accessToken) {
             $this->accessToken = getVendorSettings('whatsapp_access_token');
         }
+        ignoreFacebookApiError(true);
         $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps");
-        return $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps", [
+        $result = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps", [
             "override_callback_uri" => $webhookUrl,
             "verify_token" => sha1($vendorUid)
         ]);
+        ignoreFacebookApiError(false);
+        return $result;
     }
 
     /**
@@ -266,8 +273,11 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
             $this->accessToken = getVendorSettings('whatsapp_access_token');
         }
         // delete existing webhooks
+        ignoreFacebookApiError(true);
         $this->apiDeleteRequest("{$wabaId}/subscribed_apps");
-        return $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps");
+        $result = $this->apiPostRequest("{$this->baseApiRequestEndpoint}{$wabaId}/subscribed_apps");
+        ignoreFacebookApiError(false);
+        return $result;
     }
 
     /**
