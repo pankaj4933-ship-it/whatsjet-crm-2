@@ -398,7 +398,12 @@ class WhatsAppConnectApiService extends BaseEngine implements WhatsAppServiceEng
             if (!$userMessage) {
                 $userMessage = $e->getMessage();
             }
-            // __logDebug($userMessage);
+            \Log::error('WhatsAppConnectApiService FB API Error', [
+                'status' => $response->status(),
+                'message' => $userMessage,
+                'response' => $getContentsDecoded,
+                'ignored' => (bool) ignoreFacebookApiError(),
+            ]);
             if (!ignoreFacebookApiError()) {
                 // stop and response back for error if any
                 abortIf(

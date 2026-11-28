@@ -4350,7 +4350,14 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
         if (!$phoneNumberRecord) {
             $phoneNumberRecord = $phoneNumbers[0];
         }
-        $marketingMessageOnboardingStatus = $this->whatsAppApiService->getMarketingMessageOnboardingStatus()['marketing_messages_onboarding_status'] ?? '';
+        ignoreFacebookApiError(true);
+        try {
+            $marketingMessageOnboardingStatus = $this->whatsAppApiService->getMarketingMessageOnboardingStatus()['marketing_messages_onboarding_status'] ?? '';
+        } catch (\Throwable $th) {
+            $marketingMessageOnboardingStatus = '';
+        } finally {
+            ignoreFacebookApiError(false);
+        }
 
         if (!$this->vendorSettingsEngine->updateProcess('whatsapp_cloud_api_setup', [
             'whatsapp_phone_numbers' => $phoneNumbers,
@@ -4428,16 +4435,23 @@ class WhatsAppServiceEngine extends BaseEngine implements WhatsAppServiceEngineI
     {
         $processedResponse = $this->whatsAppConnectApiService->processEmbeddedSignUp($request);
         if ($processedResponse->success()) {
-            sleep(1);
-            updateProgressTextModel(
-                __tr('Updating health status...')
-            );
-            $this->refreshHealthStatus();
-            sleep(1);
-            updateProgressTextModel(
-                __tr('syncing phone numbers...')
-            );
-            $this->processSyncPhoneNumbers();
+            ignoreFacebookApiError(true);
+            try {
+                sleep(1);
+                updateProgressTextModel(
+                    __tr('Updating health status...')
+                );
+                $this->refreshHealthStatus();
+                sleep(1);
+                updateProgressTextModel(
+                    __tr('syncing phone numbers...')
+                );
+                $this->processSyncPhoneNumbers();
+            } catch (\Throwable $th) {
+                \Log::warning('Post embedded signup sync warning: ' . $th->getMessage());
+            } finally {
+                ignoreFacebookApiError(false);
+            }
         }
         return $processedResponse;
     }
